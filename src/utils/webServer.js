@@ -1,14 +1,18 @@
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-const compression = require('compression');
-const morgan = require('morgan');
-const path = require('path');
-const fs = require('fs-extra');
-const config = require('../config');
-const logger = require('./logger');
-const { cache } = require('./cache');
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import compression from 'compression';
+import morgan from 'morgan';
+import path from 'path';
+import fs from 'fs-extra';
+import { fileURLToPath } from 'url';
+import config from '../config.js';
+import logger from './logger.js';
+import { cache } from './cache.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class WebServer {
     constructor() {
@@ -40,7 +44,29 @@ class WebServer {
             await this.setupRoutes();
             await this.setupErrorHandling();
 
-            const port = config.server.port || 3000;
+            let port = config.server.port || 3000;
+            
+            // Function to find an available port
+            async function findAvailablePort(startPort) {
+                const net = await import('net');
+            
+                return new Promise((resolve, reject) => {
+                    const server = net.createServer();
+            
+                    server.listen(startPort, () => {
+                        const { port } = server.address();
+                        server.close(() => resolve(port));
+                    });
+            
+                    server.on('error', () => {
+                        // Port is in use, try next one
+                        findAvailablePort(startPort + 1).then(resolve).catch(reject);
+                    });
+                });
+            }
+            
+            // Find available port
+            port = await findAvailablePort(port);
             const host = config.server.host || '0.0.0.0';
 
             this.server = this.app.listen(port, host, () => {
@@ -141,7 +167,7 @@ class WebServer {
 
     async loadAPIRoutes() {
         const routesPath = path.join(__dirname, '..', 'api', 'routes');
-        
+
         if (!await fs.pathExists(routesPath)) {
             logger.info('API routes directory not found, skipping route loading');
             return;
@@ -155,10 +181,16 @@ class WebServer {
                 try {
                     const routePath = path.join(routesPath, file);
                     const routeName = path.basename(file, '.js');
-                    
-                    delete require.cache[require.resolve(routePath)];
-                    const route = require(routePath);
-                    
+
+                    // Convert to file:// URL for ES modules
+                    const fileUrl = path.isAbsolute(routePath)
+                        ? `file://${routePath.replace(/\\/g, '/')}`
+                        : path.resolve(routePath);
+
+                    // Use dynamic import for ES modules
+                    const routeModule = await import(fileUrl);
+                    const route = routeModule.default || routeModule;
+
                     if (typeof route === 'function' && route.length === 4) {
                         this.app.use(`/api/${routeName}`, route);
                         this.routes.set(routeName, route);
@@ -576,13 +608,11 @@ _Server running on http://localhost:${serverInfo.port}_`;
 
 const webServer = new WebServer();
 
-module.exports = {
-    webServer,
-    startWebServer: (app) => webServer.startWebServer(app),
-    stopWebServer: () => webServer.stopWebServer(),
-    addRoute: (path, router) => webServer.addRoute(path, router),
-    addMiddleware: (middleware) => webServer.addMiddleware(middleware),
-    createWebhook: (path, handler) => webServer.createWebhook(path, handler),
-    getStats: () => webServer.getStats(),
-    generateServerInfo: () => webServer.generateServerInfo()
-};
+export const startWebServer = (app) => webServer.startWebServer(app);
+export const stopWebServer = () => webServer.stopWebServer();
+export const addRoute = (path, router) => webServer.addRoute(path, router);
+export const addMiddleware = (middleware) => webServer.addMiddleware(middleware);
+export const createWebhook = (path, handler) => webServer.createWebhook(path, handler);
+export const getStats = () => webServer.getStats();
+export const generateServerInfo = () => webServer.generateServerInfo();
+export { webServer };

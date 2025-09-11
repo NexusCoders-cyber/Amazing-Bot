@@ -1,14 +1,16 @@
-const fs = require('fs-extra');
-const path = require('path');
-const { Collection } = require('@whiskeysockets/baileys');
-const config = require('../config');
-const logger = require('../utils/logger');
-const { getUser, updateUser } = require('../models/User');
-const { getGroup, updateGroup } = require('../models/Group');
-const { logCommand } = require('../models/Command');
-const rateLimiter = require('../utils/rateLimiter');
-const antiSpam = require('../utils/antiSpam');
-const cache = require('../utils/cache');
+import fs from 'fs-extra';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import config from '../config.js';
+import logger, { logCommand } from '../utils/logger.js';
+import { getUser, updateUser } from '../models/User.js';
+import { getGroup, updateGroup } from '../models/Group.js';
+import { cache } from '../utils/cache.js';
+import { antiSpam } from '../utils/antiSpam.js';
+import { rateLimiter } from '../utils/rateLimiter.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class CommandHandler {
     constructor() {
@@ -208,9 +210,14 @@ class CommandHandler {
 
     async handleCommand(sock, message, commandName, args) {
         try {
+            logger.info(`CommandHandler: Processing command ${commandName}`);
             const command = this.getCommand(commandName);
-            if (!command) return false;
-            
+            if (!command) {
+                logger.warn(`CommandHandler: Command ${commandName} not found`);
+                return false;
+            }
+
+            logger.info(`CommandHandler: Command found, executing ${commandName}`);
             const from = message.key.remoteJid;
             const sender = message.key.participant || from;
             const isGroup = from.endsWith('@g.us');
@@ -336,17 +343,18 @@ class CommandHandler {
             
         } catch (error) {
             logger.error(`Command execution error [${commandName}]:`, error);
-            
+            logger.error('Error stack:', error.stack);
+
             const stats = this.commandStats.get(commandName);
             if (stats) {
                 stats.errors++;
                 this.commandStats.set(commandName, stats);
             }
-            
+
             await sock.sendMessage(message.key.remoteJid, {
                 text: `❌ *Command Error*\n\nAn error occurred while executing this command.\n\n*Command:* ${commandName}\n*Error:* ${error.message || 'Unknown error'}`
             });
-            
+
             return true;
         } finally {
             await sock.sendPresenceUpdate('paused', message.key.remoteJid);
@@ -455,17 +463,15 @@ class CommandHandler {
 
 const commandHandler = new CommandHandler();
 
-module.exports = {
-    commandHandler,
-    loadCommands: () => commandHandler.loadCommands(),
-    getCommand: (name) => commandHandler.getCommand(name),
-    handleCommand: (sock, message, commandName, args) => 
-        commandHandler.handleCommand(sock, message, commandName, args),
-    getCommandCount: () => commandHandler.getCommandCount(),
-    reloadCommand: (name) => commandHandler.reloadCommand(name),
-    getHelpMessage: (category, user) => commandHandler.getHelpMessage(category, user),
-    searchCommands: (query, user) => commandHandler.searchCommands(query, user),
-    getTopCommands: (limit) => commandHandler.getTopCommands(limit),
-    getAllCategories: () => commandHandler.getAllCategories(),
-    getCommandsByCategory: (category) => commandHandler.getCommandsByCategory(category)
-};
+export const loadCommands = () => commandHandler.loadCommands();
+export const getCommand = (name) => commandHandler.getCommand(name);
+export const handleCommand = (sock, message, commandName, args) =>
+    commandHandler.handleCommand(sock, message, commandName, args);
+export const getCommandCount = () => commandHandler.getCommandCount();
+export const reloadCommand = (name) => commandHandler.reloadCommand(name);
+export const getHelpMessage = (category, user) => commandHandler.getHelpMessage(category, user);
+export const searchCommands = (query, user) => commandHandler.searchCommands(query, user);
+export const getTopCommands = (limit) => commandHandler.getTopCommands(limit);
+export const getAllCategories = () => commandHandler.getAllCategories();
+export const getCommandsByCategory = (category) => commandHandler.getCommandsByCategory(category);
+export { commandHandler };

@@ -5,6 +5,7 @@
   "main": "index.js",
   "author": "Ilom",
   "license": "MIT",
+  "type": "module",
   "keywords": [
     "whatsapp",
     "bot",

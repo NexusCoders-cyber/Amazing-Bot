@@ -1,4 +1,5 @@
-require('dotenv').config();
+import dotenv from 'dotenv';
+dotenv.config();
 
 const config = {
     botName: process.env.BOT_NAME || 'Ilom Bot',
@@ -265,7 +266,7 @@ function isProduction() {
 
 validateConfig();
 
-module.exports = {
+export default {
     ...config,
     validateConfig,
     getEnvironmentInfo,

@@ -1,15 +1,20 @@
-const { downloadMediaMessage } = require('@whiskeysockets/baileys');
-const { commandHandler } = require('./commandHandler');
-const config = require('../config');
-const logger = require('../utils/logger');
-const { getUser, createUser, updateUser } = require('../models/User');
-const { getGroup, createGroup, updateGroup } = require('../models/Group');
-const { createMessage } = require('../models/Message');
-const mediaHandler = require('./mediaHandler');
-const antiSpam = require('../utils/antiSpam');
-const cache = require('../utils/cache');
-const fs = require('fs-extra');
-const path = require('path');
+import { downloadMediaMessage } from '@whiskeysockets/baileys';
+import { commandHandler } from './commandHandler.js';
+import config from '../config.js';
+import logger from '../utils/logger.js';
+import { getUser, createUser, updateUser } from '../models/User.js';
+import { getGroup, createGroup, updateGroup } from '../models/Group.js';
+import { createMessage } from '../models/Message.js';
+import mediaHandler from './mediaHandler.js';
+import { cache } from '../utils/cache.js';
+import { antiSpam } from '../utils/antiSpam.js';
+import aiService from '../services/aiService.js';
+import fs from 'fs-extra';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class MessageHandler {
     constructor() {
@@ -21,7 +26,12 @@ class MessageHandler {
 
     extractMessageContent(message) {
         const content = message.message;
-        if (!content) return null;
+        if (!content) {
+            logger.debug('Message has no content:', { messageKeys: Object.keys(message) });
+            return null;
+        }
+
+        logger.debug('Message content keys:', { contentKeys: Object.keys(content) });
 
         let text = '';
         let messageType = 'text';
@@ -101,8 +111,12 @@ class MessageHandler {
     }
 
     async processCommand(sock, message, text, user, group, isGroup) {
+        logger.info(`Processing command from text: "${text}"`);
         const prefixUsed = this.detectPrefix(text);
+        logger.info(`Prefix detected: "${prefixUsed}"`);
+
         if (!prefixUsed && !this.shouldProcessNoPrefix(text, isGroup, group)) {
+            logger.info('No prefix and no-prefix not allowed');
             return false;
         }
 
@@ -110,18 +124,26 @@ class MessageHandler {
         const args = commandText.trim().split(/\s+/);
         const commandName = args.shift()?.toLowerCase();
 
-        if (!commandName) return false;
+        logger.info(`Command name: "${commandName}", args: ${args.join(', ')}`);
+
+        if (!commandName) {
+            logger.info('No command name found');
+            return false;
+        }
 
         const command = commandHandler.getCommand(commandName);
+        logger.info(`Command found: ${!!command}`);
+
         if (!command) {
             if (prefixUsed) {
+                logger.info(`Handling unknown command: ${commandName}`);
                 await this.handleUnknownCommand(sock, message, commandName);
             }
             return false;
         }
 
-        logger.info(`Command executed: ${commandName} by ${user.phone || user.jid} in ${isGroup ? 'group' : 'private'}`);
-        
+        logger.info(`Executing command: ${commandName} by ${user.phone || user.jid} in ${isGroup ? 'group' : 'private'}`);
+
         await commandHandler.handleCommand(sock, message, commandName, args);
         return true;
     }
@@ -191,7 +213,6 @@ class MessageHandler {
         if (isGroup && !text.includes('@' + sock.user.id.split(':')[0])) return;
 
         try {
-            const aiService = require('../services/aiService');
             const response = await aiService.generateResponse(text, user, isGroup);
             
             if (response) {
@@ -271,14 +292,26 @@ class MessageHandler {
 
     async handleIncomingMessage(sock, message) {
         try {
-            if (!message || message.key.fromMe) return;
-            
+            logger.info('Received message:', { from: message.key.remoteJid, type: message.message ? Object.keys(message.message)[0] : 'unknown' });
+
+            if (!message || message.key.fromMe) {
+                logger.info('Ignoring message: fromMe or invalid');
+                return;
+            }
+
             const from = message.key.remoteJid;
             const sender = message.key.participant || from;
             const isGroup = from.endsWith('@g.us');
-            
+
+            logger.info(`Processing message from ${sender} in ${isGroup ? 'group' : 'private'}`);
+
             const messageContent = this.extractMessageContent(message);
-            if (!messageContent) return;
+            if (!messageContent) {
+                logger.warn('Failed to extract message content');
+                return;
+            }
+
+            logger.info('Message content extracted:', { text: messageContent.text.substring(0, 50), type: messageContent.messageType });
 
             const spamCheck = await antiSpam.checkSpam(sender, message);
             if (spamCheck.isSpam && spamCheck.action === 'block') return;
@@ -338,16 +371,20 @@ class MessageHandler {
 
             await this.handleMentions(sock, message, messageContent.text, isGroup);
 
+            logger.info('About to process command');
             const isCommand = await this.processCommand(
                 sock, message, messageContent.text, user, group, isGroup
             );
+            logger.info(`Command processing result: ${isCommand}`);
 
             if (!isCommand && messageContent.text) {
+                logger.info('Processing as non-command message');
                 const autoReplyHandled = await this.handleAutoReply(
                     sock, message, messageContent.text, user, isGroup
                 );
 
                 if (!autoReplyHandled) {
+                    logger.info('Handling with chatbot');
                     await this.handleChatBot(
                         sock, message, messageContent.text, user, isGroup
                     );
@@ -363,6 +400,7 @@ class MessageHandler {
 
         } catch (error) {
             logger.error('Message handling error:', error);
+            logger.error('Error stack:', error.stack);
             await this.handleMessageError(sock, message, error);
         }
     }
@@ -678,7 +716,7 @@ class MessageHandler {
 
 const messageHandler = new MessageHandler();
 
-module.exports = {
+export default {
     messageHandler,
     handleIncomingMessage: (sock, message) => messageHandler.handleIncomingMessage(sock, message),
     handleMessageUpdate: (sock, updates) => messageHandler.handleMessageUpdate(sock, updates),

@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const UserSchema = new mongoose.Schema({
     jid: {
@@ -409,7 +409,7 @@ UserSchema.pre('save', function(next) {
     next();
 });
 
-const User = mongoose.model('User', UserSchema);
+export const User = mongoose.model('User', UserSchema);
 
 async function getUser(jid) {
     try {
@@ -459,11 +459,4 @@ async function getUserStats() {
     }
 }
 
-module.exports = {
-    User,
-    getUser,
-    createUser,
-    updateUser,
-    deleteUser,
-    getUserStats
-};
+export { getUser, createUser, updateUser, deleteUser, getUserStats };

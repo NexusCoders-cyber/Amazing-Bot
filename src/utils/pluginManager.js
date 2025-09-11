@@ -1,6 +1,10 @@
-const fs = require('fs-extra');
-const path = require('path');
-const logger = require('./logger');
+import fs from 'fs-extra';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import logger from './logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class PluginManager {
     constructor() {
@@ -13,14 +17,20 @@ class PluginManager {
     async loadPlugin(pluginName) {
         try {
             const pluginPath = path.join(this.pluginDir, `${pluginName}.js`);
-            
+
             if (!await fs.pathExists(pluginPath)) {
                 logger.warn(`Plugin ${pluginName} not found`);
                 return false;
             }
 
-            delete require.cache[require.resolve(pluginPath)];
-            const plugin = require(pluginPath);
+            // Convert Windows paths to file:// URLs for ES modules
+            const fileUrl = path.isAbsolute(pluginPath)
+                ? `file://${pluginPath.replace(/\\/g, '/')}`
+                : path.resolve(pluginPath);
+
+            // Use dynamic import for ES modules
+            const pluginModule = await import(fileUrl);
+            const plugin = pluginModule.default || pluginModule;
             
             this.plugins.set(pluginName, plugin);
             this.pluginStates.set(pluginName, 'loaded');
@@ -71,11 +81,19 @@ class PluginManager {
 
 const pluginManager = new PluginManager();
 
-module.exports = {
-    pluginManager,
-    loadPlugins: () => {
-        logger.info('Plugin system initialized');
-        return Promise.resolve();
-    },
-    getActiveCount: () => pluginManager.activePlugins.size
+const loadPlugins = async () => {
+    logger.info('Plugin system initialized');
+    // Load all plugins from plugins directory
+    const pluginFiles = await fs.readdir(pluginManager.pluginDir).catch(() => []);
+    for (const file of pluginFiles) {
+        if (file.endsWith('.js')) {
+            const pluginName = file.replace('.js', '');
+            await pluginManager.loadPlugin(pluginName);
+        }
+    }
+    return Promise.resolve();
 };
+
+const getActiveCount = () => pluginManager.activePlugins.size;
+
+export { loadPlugins, getActiveCount, pluginManager };

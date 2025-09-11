@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const GroupSchema = new mongoose.Schema({
     jid: {
@@ -138,7 +138,7 @@ GroupSchema.methods.unban = function() {
     return this.save();
 };
 
-const Group = mongoose.model('Group', GroupSchema);
+export const Group = mongoose.model('Group', GroupSchema);
 
 async function getGroup(jid) {
     try {
@@ -189,11 +189,4 @@ async function getGroupStats() {
     }
 }
 
-module.exports = {
-    Group,
-    getGroup,
-    createGroup,
-    updateGroup,
-    deleteGroup,
-    getGroupStats
-};
+export { getGroup, createGroup, updateGroup, deleteGroup, getGroupStats };

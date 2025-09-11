@@ -1,37 +1,35 @@
-require('dotenv').config();
-const {
-    default: makeWASocket,
-    Browsers,
-    DisconnectReason,
-    useMultiFileAuthState,
-    fetchLatestBaileysVersion,
-    makeCacheableSignalKeyStore
-} = require('@whiskeysockets/baileys');
-const P = require('pino');
-const express = require('express');
-const fs = require('fs-extra');
-const path = require('path');
-const NodeCache = require('node-cache');
-const gradient = require('gradient-string');
-const figlet = require('figlet');
-const chalk = require('chalk');
+import dotenv from 'dotenv';
+dotenv.config();
+import { default as makeWASocket, Browsers, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion, makeCacheableSignalKeyStore } from '@whiskeysockets/baileys';
+import P from 'pino';
+import express from 'express';
+import fs from 'fs-extra';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import NodeCache from 'node-cache';
+import gradient from 'gradient-string';
+import figlet from 'figlet';
+import chalk from 'chalk';
 
-const { connectToDatabase } = require('./src/utils/database');
-const logger = require('./src/utils/logger');
-const messageHandler = require('./src/handlers/messageHandler');
-const commandHandler = require('./src/handlers/commandHandler');
-const eventHandler = require('./src/handlers/eventHandler');
-const callHandler = require('./src/handlers/callHandler');
-const groupHandler = require('./src/handlers/groupHandler');
-const mediaHandler = require('./src/handlers/mediaHandler');
-const errorHandler = require('./src/handlers/errorHandler');
-const config = require('./src/config');
-const constants = require('./src/constants');
-const { initializeCommands } = require('./src/utils/commandManager');
-const { loadPlugins } = require('./src/utils/pluginManager');
-const { startScheduler } = require('./src/utils/scheduler');
-const { initializeCache } = require('./src/utils/cache');
-const { startWebServer } = require('./src/utils/webServer');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+import { connectToDatabase } from './src/utils/database.js';
+import logger from './src/utils/logger.js';
+import messageHandler from './src/handlers/messageHandler.js';
+import { commandHandler } from './src/handlers/commandHandler.js';
+import eventHandler from './src/handlers/eventHandler.js';
+import callHandler from './src/handlers/callHandler.js';
+import groupHandler from './src/handlers/groupHandler.js';
+import mediaHandler from './src/handlers/mediaHandler.js';
+import errorHandler from './src/handlers/errorHandler.js';
+import config from './src/config.js';
+import constants from './src/constants.js';
+import { initializeCommands } from './src/utils/commandManager.js';
+import { loadPlugins } from './src/utils/pluginManager.js';
+import { startScheduler } from './src/utils/scheduler.js';
+import { initializeCache } from './src/utils/cache.js';
+import { startWebServer } from './src/utils/webServer.js';
 
 const msgRetryCounterCache = new NodeCache({ stdTTL: 600, checkperiod: 60 });
 const app = express();
@@ -141,18 +139,19 @@ async function processSessionCredentials() {
 }
 
 async function sendBotStatusUpdate(sock) {
-    const startupTime = new Date().toLocaleString('en-US', {
-        timeZone: config.timezone || 'UTC',
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-    });
-    
-    const statusMessage = `╭─────「 *${config.botName}* 」─────╮
+    try {
+        const startupTime = new Date().toLocaleString('en-US', {
+            timeZone: config.timezone || 'UTC',
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+
+        const statusMessage = `╭─────「 *${config.botName}* 」─────╮
 │ ✅ Status: Online & Active
 │ 🔥 Version: ${constants.BOT_VERSION}
 │ 🕐 Started: ${startupTime}
@@ -160,75 +159,134 @@ async function sendBotStatusUpdate(sock) {
 │ 👨‍💻 Developer: Ilom
 │ 🎯 Prefix: ${config.prefix}
 │ 📝 Commands: ${await commandHandler.getCommandCount()}
-│ 🔌 Plugins: ${await loadPlugins.getActiveCount()}
+│ 🔌 Plugins: 0
 ╰─────────────────────────╯
 
 🚀 *${config.botName} is now operational!*
 📖 Type *${config.prefix}help* to view all commands
 🆘 Type *${config.prefix}menu* for quick navigation`;
 
-    for (const ownerNumber of config.ownerNumbers) {
-        try {
-            await sock.sendMessage(ownerNumber, {
-                text: statusMessage,
-                contextInfo: {
-                    externalAdReply: {
-                        title: config.botName,
-                        body: 'Bot Successfully Started!',
-                        thumbnailUrl: config.botThumbnail,
-                        sourceUrl: config.botRepository,
-                        mediaType: 1,
-                        renderLargerThumbnail: true
+        logger.info('Sending online status message to owners...');
+
+        for (const ownerNumber of config.ownerNumbers) {
+            try {
+                const formattedNumber = ownerNumber.includes('@') ? ownerNumber : `${ownerNumber}@s.whatsapp.net`;
+                logger.info(`Sending status to: ${formattedNumber}`);
+
+                await sock.sendMessage(formattedNumber, {
+                    text: statusMessage,
+                    contextInfo: {
+                        externalAdReply: {
+                            title: config.botName,
+                            body: 'Bot Successfully Started!',
+                            thumbnailUrl: config.botThumbnail,
+                            sourceUrl: config.botRepository,
+                            mediaType: 1,
+                            renderLargerThumbnail: true
+                        }
                     }
-                }
-            });
-        } catch (error) {
-            logger.error(`Failed to send status to ${ownerNumber}:`, error);
+                });
+
+                logger.info(`✅ Status message sent to ${formattedNumber}`);
+            } catch (error) {
+                logger.error(`❌ Failed to send status to ${ownerNumber}:`, error);
+            }
         }
+
+        console.log(chalk.green.bold('✅ Online status messages sent to all owners!'));
+    } catch (error) {
+        logger.error('Error sending bot status update:', error);
+        console.log(chalk.red('⚠️ Failed to send online status messages'));
     }
 }
 
 async function handleConnectionEvents(sock, connectionUpdate) {
     const { connection, lastDisconnect, qr } = connectionUpdate;
-    
+
     if (qr) {
         logger.info('QR Code generated - Please scan with WhatsApp');
         console.log(chalk.yellow('📱 Scan the QR code above with WhatsApp'));
+        console.log(chalk.cyan('QR Code:'), qr);
     }
-    
+
     if (connection === 'close') {
         const statusCode = lastDisconnect?.error?.output?.statusCode;
         const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-        
-        logger.warn(`Connection closed with status: ${statusCode}`);
-        
+
+        logger.warn(`Connection closed with status: ${statusCode}`, {
+            reason: lastDisconnect?.error?.message,
+            shouldReconnect
+        });
+
         if (shouldReconnect && reconnectAttempts < MAX_RECONNECT) {
             reconnectAttempts++;
-            logger.info(`Reconnection attempt ${reconnectAttempts}/${MAX_RECONNECT}`);
-            setTimeout(establishWhatsAppConnection, 5000);
+            const delay = Math.min(10000 * reconnectAttempts, 60000); // Longer delays
+
+            // Clean up previous session before reconnecting
+            if (sock) {
+                try {
+                    logger.info('Logging out previous session...');
+                    await sock.logout();
+                } catch (error) {
+                    logger.warn('Error during logout:', error);
+                }
+            }
+
+            logger.info(`Reconnection attempt ${reconnectAttempts}/${MAX_RECONNECT} in ${delay}ms`);
+            console.log(chalk.yellow(`🔄 Retrying connection in ${delay/1000}s...`));
+            setTimeout(establishWhatsAppConnection, delay);
         } else {
             logger.error('Maximum reconnection attempts reached or logged out');
+            console.log(chalk.red.bold('❌ Connection failed - Please check that no other WhatsApp Web sessions are active'));
+            console.log(chalk.cyan('💡 Tip: Close all other WhatsApp Web sessions and try again'));
             process.exit(1);
         }
     } else if (connection === 'open') {
         reconnectAttempts = 0;
         logger.info('Successfully connected to WhatsApp Web');
         console.log(chalk.green.bold('✅ Bot is online and ready to serve!'));
-        
+
+        // Send immediate online notification
         if (!isInitialized) {
             isInitialized = true;
-            await sendBotStatusUpdate(sock);
+
+            // Send quick online message first
+            setTimeout(async () => {
+                try {
+                    const quickMessage = `🤖 *${config.botName}*\n\n✅ *Bot is now ONLINE!*\n⏰ ${new Date().toLocaleString()}\n\nUse ${config.prefix}help for commands.`;
+                    for (const ownerNumber of config.ownerNumbers) {
+                        try {
+                            const formattedNumber = ownerNumber.includes('@') ? ownerNumber : `${ownerNumber}@s.whatsapp.net`;
+                            await sock.sendMessage(formattedNumber, { text: quickMessage });
+                        } catch (error) {
+                            logger.error(`Failed to send quick online message to ${ownerNumber}:`, error);
+                        }
+                    }
+                } catch (error) {
+                    logger.error('Error sending quick online message:', error);
+                }
+            }, 2000);
+
+            // Send detailed status message after connection is stable
+            setTimeout(() => sendBotStatusUpdate(sock), 5000);
         }
     } else if (connection === 'connecting') {
         logger.info('Establishing connection to WhatsApp...');
+        console.log(chalk.blue('🔄 Connecting to WhatsApp...'));
     }
 }
 
 async function establishWhatsAppConnection() {
     try {
+        logger.info('Initializing WhatsApp connection...');
+        console.log(chalk.blue('🔄 Initializing WhatsApp connection...'));
+
         const { state, saveCreds } = await useMultiFileAuthState(SESSION_PATH);
+        logger.info('Session state loaded');
+
         const { version } = await fetchLatestBaileysVersion();
-        
+        logger.info(`Using Baileys version: ${version.join('.')}`);
+
         sock = makeWASocket({
             version,
             auth: {
@@ -237,25 +295,37 @@ async function establishWhatsAppConnection() {
             },
             printQRInTerminal: true,
             logger: P({ level: 'silent' }),
-            browser: Browsers.ubuntu('Chrome'),
+            browser: Browsers.macOS('Desktop'),
             msgRetryCounterCache,
             generateHighQualityLinkPreview: true,
-            markOnlineOnConnect: config.markOnline,
+            markOnlineOnConnect: true,
             syncFullHistory: false,
             fireInitQueries: true,
             emitOwnEvents: false,
-            maxMsgRetryCount: 5,
-            qrTimeout: 60000,
-            connectTimeoutMs: 60000,
-            defaultQueryTimeoutMs: 60000,
-            keepAliveIntervalMs: 30000,
+            maxMsgRetryCount: 10,
+            qrTimeout: 120000,
+            connectTimeoutMs: 120000,
+            defaultQueryTimeoutMs: 120000,
+            keepAliveIntervalMs: 20000,
+            retryRequestDelayMs: 5000,
+            maxRetriesBeforeDisconnect: 3,
+            // Additional options for better stability
+            shouldIgnoreJid: (jid) => false,
+            shouldSyncHistoryMessage: (msg) => false,
             getMessage: async (key) => {
                 if (msgRetryCounterCache.has(key.id)) {
                     return msgRetryCounterCache.get(key.id);
                 }
                 return { conversation: '' };
-            }
+            },
+            // Handle connection conflicts
+            connectTimeoutMs: 60000,
+            qrTimeout: 60000,
+            // Force single device mode
+            singleDeviceMode: true
         });
+
+        logger.info('WhatsApp socket created successfully');
         
         sock.ev.on('connection.update', (update) => 
             handleConnectionEvents(sock, update)
@@ -264,8 +334,10 @@ async function establishWhatsAppConnection() {
         sock.ev.on('creds.update', saveCreds);
         
         sock.ev.on('messages.upsert', async ({ messages, type }) => {
+            logger.info(`Messages upsert event: type=${type}, count=${messages.length}`);
             if (type === 'notify') {
                 for (const message of messages) {
+                    logger.info('Processing message in event listener');
                     await messageHandler.handleIncomingMessage(sock, message);
                 }
             }
@@ -299,10 +371,17 @@ async function establishWhatsAppConnection() {
         
     } catch (error) {
         logger.error('Failed to establish WhatsApp connection:', error);
+        console.log(chalk.red(`❌ Connection failed: ${error.message}`));
+
         if (reconnectAttempts < MAX_RECONNECT) {
             reconnectAttempts++;
-            setTimeout(establishWhatsAppConnection, 5000);
+            const delay = Math.min(5000 * reconnectAttempts, 30000);
+            logger.info(`Retrying connection in ${delay}ms (attempt ${reconnectAttempts}/${MAX_RECONNECT})`);
+            console.log(chalk.yellow(`🔄 Retrying connection in ${delay/1000}s...`));
+            setTimeout(establishWhatsAppConnection, delay);
         } else {
+            logger.error('Maximum reconnection attempts reached');
+            console.log(chalk.red.bold('❌ Maximum reconnection attempts reached. Please check your internet connection and try again.'));
             process.exit(1);
         }
     }

@@ -1,6 +1,6 @@
-const { cache } = require('./cache');
-const logger = require('./logger');
-const config = require('../config');
+import { cache } from './cache.js';
+import logger from './logger.js';
+import config from '../config.js';
 
 class RateLimiter {
     constructor() {
@@ -202,13 +202,11 @@ class RateLimiter {
 
 const rateLimiter = new RateLimiter();
 
-module.exports = {
-    rateLimiter,
-    checkLimit: (userId, type, customLimit) => rateLimiter.checkLimit(userId, type, customLimit),
-    isTemporaryBanned: (userId) => rateLimiter.isTemporaryBanned(userId),
-    getUserLimits: (userId) => rateLimiter.getUserLimits(userId),
-    clearUserLimits: (userId) => rateLimiter.clearUserLimits(userId),
-    getGlobalStats: () => rateLimiter.getGlobalStats(),
-    createUserLimiter: (userId, limits) => rateLimiter.createUserLimiter(userId, limits),
-    middleware: (req, res, next) => rateLimiter.middleware(req, res, next)
-};
+export const checkLimit = (userId, type, customLimit) => rateLimiter.checkLimit(userId, type, customLimit);
+export const isTemporaryBanned = (userId) => rateLimiter.isTemporaryBanned(userId);
+export const getUserLimits = (userId) => rateLimiter.getUserLimits(userId);
+export const clearUserLimits = (userId) => rateLimiter.clearUserLimits(userId);
+export const getGlobalStats = () => rateLimiter.getGlobalStats();
+export const createUserLimiter = (userId, limits) => rateLimiter.createUserLimiter(userId, limits);
+export const middleware = (req, res, next) => rateLimiter.middleware(req, res, next);
+export { rateLimiter };

@@ -1,6 +1,6 @@
-const { cache } = require('./cache');
-const logger = require('./logger');
-const config = require('../config');
+import { cache } from './cache.js';
+import logger from './logger.js';
+import config from '../config.js';
 
 class AntiSpam {
     constructor() {
@@ -448,15 +448,13 @@ class AntiSpam {
 
 const antiSpam = new AntiSpam();
 
-module.exports = {
-    antiSpam,
-    checkSpam: (userId, message, context) => antiSpam.checkSpam(userId, message, context),
-    getUserViolations: (userId) => antiSpam.getUserViolations(userId),
-    clearUserViolations: (userId) => antiSpam.clearUserViolations(userId),
-    addToWhitelist: (userId) => antiSpam.addToWhitelist(userId),
-    removeFromWhitelist: (userId) => antiSpam.removeFromWhitelist(userId),
-    updateSettings: (settings) => antiSpam.updateSettings(settings),
-    getGlobalStats: () => antiSpam.getGlobalStats(),
-    generateSpamReport: (userId) => antiSpam.generateSpamReport(userId),
-    processSpamAction: (sock, message, result, context) => antiSpam.processSpamAction(sock, message, result, context)
-};
+export const checkSpam = (userId, message, context) => antiSpam.checkSpam(userId, message, context);
+export const getUserViolations = (userId) => antiSpam.getUserViolations(userId);
+export const clearUserViolations = (userId) => antiSpam.clearUserViolations(userId);
+export const addToWhitelist = (userId) => antiSpam.addToWhitelist(userId);
+export const removeFromWhitelist = (userId) => antiSpam.removeFromWhitelist(userId);
+export const updateSettings = (settings) => antiSpam.updateSettings(settings);
+export const getGlobalStats = () => antiSpam.getGlobalStats();
+export const generateSpamReport = (userId) => antiSpam.generateSpamReport(userId);
+export const processSpamAction = (sock, message, result, context) => antiSpam.processSpamAction(sock, message, result, context);
+export { antiSpam };

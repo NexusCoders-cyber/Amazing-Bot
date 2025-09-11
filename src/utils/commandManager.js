@@ -1,8 +1,11 @@
-const fs = require('fs-extra');
-const path = require('path');
-const { Collection } = require('@whiskeysockets/baileys');
-const logger = require('./logger');
-const { commandHandler } = require('../handlers/commandHandler');
+import fs from 'fs-extra';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import logger from './logger.js';
+import { commandHandler } from '../handlers/commandHandler.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class CommandManager {
     constructor() {
@@ -69,9 +72,15 @@ class CommandManager {
     async loadCommand(category, filename) {
         try {
             const commandPath = path.join(__dirname, '..', 'commands', category, filename);
-            
-            delete require.cache[require.resolve(commandPath)];
-            const command = require(commandPath);
+
+            // Convert Windows paths to file:// URLs for ES modules
+            const fileUrl = path.isAbsolute(commandPath)
+                ? `file://${commandPath.replace(/\\/g, '/')}`
+                : path.resolve(commandPath);
+
+            // Use dynamic import for ES modules
+            const commandModule = await import(fileUrl);
+            const command = commandModule.default || commandModule;
             
             if (!this.validateCommandStructure(command)) {
                 logger.warn(`Invalid command structure: ${filename}`);
@@ -478,23 +487,21 @@ _Template command - Delete this file after creating real commands._\`,
 
 const commandManager = new CommandManager();
 
-module.exports = {
-    commandManager,
-    initializeCommands: () => commandManager.initializeCommands(),
-    getCommand: (name) => commandManager.getCommand(name),
-    getAllCommands: () => commandManager.getAllCommands(),
-    getCommandsByCategory: (category) => commandManager.getCommandsByCategory(category),
-    getAllCategories: () => commandManager.getAllCategories(),
-    reloadCommand: (name) => commandManager.reloadCommand(name),
-    reloadCategory: (category) => commandManager.reloadCategory(category),
-    reloadAllCommands: () => commandManager.reloadAllCommands(),
-    enableCommand: (name) => commandManager.enableCommand(name),
-    disableCommand: (name) => commandManager.disableCommand(name),
-    isCommandEnabled: (name) => commandManager.isCommandEnabled(name),
-    searchCommands: (query) => commandManager.searchCommands(query),
-    getCommandInfo: (name) => commandManager.getCommandInfo(name),
-    getSystemStats: () => commandManager.getSystemStats(),
-    recordCommandUsage: (name, time, success) => commandManager.recordCommandUsage(name, time, success),
-    getTopCommands: (limit) => commandManager.getTopCommands(limit),
-    generateCommandHelp: (name) => commandManager.generateCommandHelp(name)
-};
+export const initializeCommands = () => commandManager.initializeCommands();
+export const getCommand = (name) => commandManager.getCommand(name);
+export const getAllCommands = () => commandManager.getAllCommands();
+export const getCommandsByCategory = (category) => commandManager.getCommandsByCategory(category);
+export const getAllCategories = () => commandManager.getAllCategories();
+export const reloadCommand = (name) => commandManager.reloadCommand(name);
+export const reloadCategory = (category) => commandManager.reloadCategory(category);
+export const reloadAllCommands = () => commandManager.reloadAllCommands();
+export const enableCommand = (name) => commandManager.enableCommand(name);
+export const disableCommand = (name) => commandManager.disableCommand(name);
+export const isCommandEnabled = (name) => commandManager.isCommandEnabled(name);
+export const searchCommands = (query) => commandManager.searchCommands(query);
+export const getCommandInfo = (name) => commandManager.getCommandInfo(name);
+export const getSystemStats = () => commandManager.getSystemStats();
+export const recordCommandUsage = (name, time, success) => commandManager.recordCommandUsage(name, time, success);
+export const getTopCommands = (limit) => commandManager.getTopCommands(limit);
+export const generateCommandHelp = (name) => commandManager.generateCommandHelp(name);
+export { commandManager };
