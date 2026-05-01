@@ -709,6 +709,7 @@ async function requestPairingCodeIfNeeded(sock, isRegistered) {
         logger.info('SESSION_ID found. Skipping phone number prompt for pairing.');
         return;
     }
+    if (await fs.pathExists(path.join(SESSION_PATH, 'creds.json'))) return;
     const number = await promptPairingNumber();
     if (!number) return;
 
@@ -772,14 +773,17 @@ async function establishWhatsAppConnection() {
             }, 120000);
 
             sock.ev.on('connection.update', async ({ connection, lastDisconnect, qr }) => {
-                if (connection === 'connecting' && !state.creds?.registered && !pairingRequested && shouldUsePairingCodeFlow()) {
-                    pairingRequested = true;
-                    setTimeout(() => {
-                        requestPairingCodeIfNeeded(sock, false).catch((e) => {
-                            logger.warn(`Pairing request failed: ${e.message}`);
-                        });
-                    }, 2000);
-                }
+               if (connection === 'connecting' && !state.creds?.registered && !pairingRequested && shouldUsePairingCodeFlow()) {
+                   const credsAlreadyExist = await fs.pathExists(path.join(SESSION_PATH, 'creds.json'));
+               if (!credsAlreadyExist) {
+                   pairingRequested = true;
+                   setTimeout(() => {
+                       requestPairingCodeIfNeeded(sock, false).catch((e) => {
+                           logger.warn(`Pairing request failed: ${e.message}`);
+                       });
+                   }, 2000);
+               }
+               }
 
                 if (qr && !pairingRequested) {
                     logger.info('QR event received but QR generation is disabled. Use pairing code flow instead.');
@@ -972,7 +976,9 @@ async function initializeBot() {
         stepLoading('🌐', 'Web Server');
         await startWebServer(app);
         stepDone('🌐', 'Web Server', `Port ${config.server?.port || process.env.PORT || 5000}`);
-
+       const _kaPort = config.server?.port || Number(process.env.PORT) || 5000;
+        setInterval(() => { fetch(`http://localhost:${_kaPort}/health`).catch(() => {}); }, 4 * 60 * 1000);
+        
         stepLoading('🔗', 'Paired Sessions');
         const restoredCount = await startSavedPairedSessions({
             onSessionSocket: attachPairedSessionRuntime
