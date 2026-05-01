@@ -12,6 +12,7 @@ import {
 import { createFontSock } from '../utils/fontSock.js';
 import { getSessionControl, isOwnerForSession, isSudoForSession } from '../utils/sessionControl.js';
 import { isTopOwner } from '../utils/privilegedUsers.js';
+import { lidPhoneCache } from '../utils/lidCache.js';
 
 function rawNum(jid) {
     if (!jid) return '';
@@ -70,8 +71,14 @@ function collectPhoneCandidatesFromMessage(message = {}) {
         ctx?.participant,
         ctx?.remoteJid
     ];
-
     for (const item of list) {
+        if (!item) continue;
+        if (isLidJid(item)) {
+            const lk = String(item).split('@')[0].split(':')[0];
+            const cached = lidPhoneCache.get(lk);
+            if (cached) candidates.add(cached);
+            continue;
+        }
         const n = rawNum(item);
         if (n && n.length >= 7) candidates.add(n);
     }
@@ -149,42 +156,54 @@ class CommandHandler {
         return null;
     }
 
-    async resolveParticipantPhone(sock, groupJid, participantJid) {
-        if (!participantJid) return '';
-        if (!isLidJid(participantJid)) {
-            const n = rawNum(participantJid);
-            if (n && n.length >= 7) return n;
-        }
-        try {
-            const meta = await this.getGroupMetadata(sock, groupJid, false);
-            if (meta?.participants) {
-                const found = this.findParticipantInList(meta.participants, participantJid);
-                if (found) {
-                    const fStr = String(found.id || '');
-                    if (!isLidJid(fStr)) {
-                        const n = rawNum(fStr);
-                        if (n && n.length >= 7) return n;
+   async resolveParticipantPhone(sock, groupJid, participantJid) {
+    if (!participantJid) return '';
+    if (!isLidJid(participantJid)) {
+        const n = rawNum(participantJid);
+        if (n && n.length >= 7) return n;
+    }
+    const lidKey = String(participantJid).split('@')[0].split(':')[0];
+    const cached = lidPhoneCache.get(lidKey);
+    if (cached) return cached;
+    try {
+        const meta = await this.getGroupMetadata(sock, groupJid, false);
+        if (meta?.participants) {
+            const found = this.findParticipantInList(meta.participants, participantJid);
+            if (found) {
+                const fStr = String(found.id || '');
+                if (!isLidJid(fStr)) {
+                    const n = rawNum(fStr);
+                    if (n && n.length >= 7) {
+                        lidPhoneCache.set(lidKey, n);
+                        return n;
                     }
                 }
             }
-        } catch {}
-        return '';
-    }
-
+        }
+    } catch {}
+    return '';
+}
+    
     resolvePrivateSenderPhone(sock, fromMe, remoteJid, userJid) {
-        if (fromMe) {
-            return getBotPhoneNum(sock);
-        }
-        if (userJid && !isLidJid(userJid)) {
-            const n = rawNum(userJid);
-            if (n && n.length >= 7) return n;
-        }
-        if (remoteJid && !isLidJid(remoteJid)) {
-            const n = rawNum(remoteJid);
-            if (n && n.length >= 7) return n;
-        }
-        return '';
+    if (fromMe) {
+        return getBotPhoneNum(sock);
     }
+    if (userJid && !isLidJid(userJid)) {
+        const n = rawNum(userJid);
+        if (n && n.length >= 7) return n;
+    }
+    if (remoteJid && !isLidJid(remoteJid)) {
+        const n = rawNum(remoteJid);
+        if (n && n.length >= 7) return n;
+    }
+    const lidStr = isLidJid(remoteJid) ? String(remoteJid) : isLidJid(userJid) ? String(userJid) : '';
+    if (lidStr) {
+        const lk = lidStr.split('@')[0].split(':')[0];
+        const cached = lidPhoneCache.get(lk);
+        if (cached) return cached;
+    }
+    return '';
+}
 
     async isGroupAdmin(sock, groupJid, participantJid) {
         try {
