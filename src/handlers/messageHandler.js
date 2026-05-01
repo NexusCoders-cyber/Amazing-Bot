@@ -9,6 +9,7 @@ import { isSuspended } from '../utils/suspendStore.js';
 import { getSessionControl, isOwnerForSession, isSudoForSession } from '../utils/sessionControl.js';
 import { isTopOwner } from '../utils/privilegedUsers.js';
 import { initWhitelist, isWhitelisted } from '../commands/owner/whitelist.js';
+import { lidPhoneCache } from '../utils/lidCache.js';
 
 let autoDownloadHandler = null;
 
@@ -87,6 +88,13 @@ function collectPhoneCandidatesFromMessage(message = {}) {
         ctx?.remoteJid
     ];
     for (const v of jidValues) {
+        if (!v) continue;
+        if (isLid(v)) {
+            const lidKey = String(v).split('@')[0].split(':')[0];
+            const cached = lidPhoneCache.get(lidKey);
+            if (cached) candidates.add(cached);
+            continue;
+        }
         const n = stripJid(v);
         if (n && n.length >= 7) candidates.add(n);
     }
@@ -135,6 +143,9 @@ async function resolveSenderPhone(sock, groupJid, rawParticipant) {
         const n = stripJid(rawParticipant);
         if (n && n.length >= 7) return n;
     }
+    const lidKey = String(rawParticipant).split('@')[0].split(':')[0];
+    const cached = lidPhoneCache.get(lidKey);
+    if (cached) return cached;
     try {
         const meta = await sock.groupMetadata(groupJid);
         if (meta?.participants) {
@@ -143,7 +154,10 @@ async function resolveSenderPhone(sock, groupJid, rawParticipant) {
                 const fStr = String(found.id || '');
                 if (!isLid(fStr)) {
                     const n = stripJid(fStr);
-                    if (n && n.length >= 7) return n;
+                    if (n && n.length >= 7) {
+                        lidPhoneCache.set(lidKey, n);
+                        return n;
+                    }
                 }
             }
         }
@@ -162,6 +176,12 @@ function resolvePrivateSenderPhone(sock, fromMe, remoteJid, userJid) {
     if (remoteJid && !isLid(remoteJid)) {
         const n = stripJid(remoteJid);
         if (n && n.length >= 7) return n;
+    }
+    const lidStr = isLid(remoteJid) ? String(remoteJid) : isLid(userJid) ? String(userJid) : '';
+    if (lidStr) {
+        const lk = lidStr.split('@')[0].split(':')[0];
+        const cached = lidPhoneCache.get(lk);
+        if (cached) return cached;
     }
     return '';
 }
