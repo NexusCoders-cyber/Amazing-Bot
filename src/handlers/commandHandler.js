@@ -255,12 +255,18 @@ class CommandHandler {
             if (botNum) nums.add(botNum);
         }
 
-        if (message?.key?.remoteJid && !message.key.remoteJid.endsWith('@g.us')) {
-            const jid = message.key.remoteJid;
-            if (!isLidJid(jid)) {
-                const n = rawNum(jid);
+        const remoteJid = message?.key?.remoteJid || '';
+        if (remoteJid && !remoteJid.endsWith('@g.us')) {
+            if (!isLidJid(remoteJid)) {
+                const n = rawNum(remoteJid);
                 if (n && n.length >= 7) nums.add(n);
             }
+        }
+
+        const participant = message?.key?.participant || '';
+        if (participant && !isLidJid(participant)) {
+            const n = rawNum(participant);
+            if (n && n.length >= 7) nums.add(n);
         }
 
         for (const n of nums) {
@@ -275,10 +281,10 @@ class CommandHandler {
         const nums = new Set();
         if (senderPhone && senderPhone.length >= 7) nums.add(senderPhone);
         for (const n of collectPhoneCandidatesFromMessage(message)) nums.add(n);
-        if (message?.key?.remoteJid && !message.key.remoteJid.endsWith('@g.us')) {
-            const jid = message.key.remoteJid;
-            if (!isLidJid(jid)) {
-                const n = rawNum(jid);
+        const remoteJid = message?.key?.remoteJid || '';
+        if (remoteJid && !remoteJid.endsWith('@g.us')) {
+            if (!isLidJid(remoteJid)) {
+                const n = rawNum(remoteJid);
                 if (n && n.length >= 7) nums.add(n);
             }
         }
