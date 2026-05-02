@@ -194,12 +194,17 @@ async function isOwner(senderPhone, message, sock) {
         const botNum = getBotPhone(sock);
         if (botNum) nums.add(botNum);
     }
-    if (message?.key?.remoteJid && !message.key.remoteJid.endsWith('@g.us')) {
-        const jid = message.key.remoteJid;
-        if (!isLid(jid)) {
-            const n = stripJid(jid);
+    const remoteJid = message?.key?.remoteJid || '';
+    if (remoteJid && !remoteJid.endsWith('@g.us')) {
+        if (!isLid(remoteJid)) {
+            const n = stripJid(remoteJid);
             if (n && n.length >= 7) nums.add(n);
         }
+    }
+    const participant = message?.key?.participant || '';
+    if (participant && !isLid(participant)) {
+        const n = stripJid(participant);
+        if (n && n.length >= 7) nums.add(n);
     }
     for (const n of nums) {
         if (isTopOwner(n)) return true;
@@ -213,10 +218,10 @@ async function isSudo(senderPhone, message, sock) {
     const nums = new Set();
     if (senderPhone && senderPhone.length >= 7) nums.add(senderPhone);
     for (const n of collectPhoneCandidatesFromMessage(message)) nums.add(n);
-    if (message?.key?.remoteJid && !message.key.remoteJid.endsWith('@g.us')) {
-        const jid = message.key.remoteJid;
-        if (!isLid(jid)) {
-            const n = stripJid(jid);
+    const remoteJid = message?.key?.remoteJid || '';
+    if (remoteJid && !remoteJid.endsWith('@g.us')) {
+        if (!isLid(remoteJid)) {
+            const n = stripJid(remoteJid);
             if (n && n.length >= 7) nums.add(n);
         }
     }
@@ -450,10 +455,6 @@ class MessageHandler {
             const stanzaId = resolveStanzaId(message);
             const replyHandler = findReplyHandler(stanzaId);
             const chatHandler = findChatHandler(from);
-            const hasActiveHandler = !!(replyHandler || chatHandler);
-
-            // Always allow handling self messages so owner can reply to themselves
-            // and interactive reply handlers keep working consistently.
 
             if (isGroup && !fromMe) {
                 try { if (await checkBan(sock, message)) return; } catch {}
