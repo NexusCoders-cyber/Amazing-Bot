@@ -23,11 +23,27 @@ function sessionIdFromSock(sock) {
     return n || 'default';
 }
 
+function getAllConfiguredNumbers() {
+    const result = new Set();
+
+    const fromEnvOwners = String(process.env.OWNER_NUMBERS || '').split(',').map(normalizeNumber).filter(Boolean);
+    const fromEnvSudo = String(process.env.SUDO_NUMBERS || '').split(',').map(normalizeNumber).filter(Boolean);
+    const fromEnvDev = String(process.env.DEVELOPER_NUMBERS || process.env.DEV_NUMBERS || '').split(',').map(normalizeNumber).filter(Boolean);
+    const fromEnvTop = normalizeNumber(process.env.TOP_OWNER_NUMBER || process.env.TOP_OWNER || '');
+    const fromConfig = (config.ownerNumbers || []).map(normalizeNumber).filter(Boolean);
+    const fromConfigSudo = (config.sudoers || []).map(normalizeNumber).filter(Boolean);
+
+    for (const n of [...fromConfig, ...fromConfigSudo, ...fromEnvOwners, ...fromEnvSudo, ...fromEnvDev]) {
+        result.add(n);
+    }
+    if (fromEnvTop) result.add(fromEnvTop);
+
+    return [...result];
+}
+
 function getDefaultOwnerNumbers(sock) {
-    const defaults = new Set((config.ownerNumbers || []).map(normalizeNumber).filter(Boolean));
-    const topOwner = normalizeNumber(process.env.TOP_OWNER_NUMBER || process.env.TOP_OWNER || '');
-    if (topOwner) defaults.add(topOwner);
-    const botNum = sessionIdFromSock(sock);
+    const defaults = new Set(getAllConfiguredNumbers());
+    const botNum = normalizeNumber(sock?.user?.id || '');
     if (botNum) defaults.add(botNum);
     return [...defaults];
 }
@@ -51,14 +67,18 @@ export async function getSessionControl(sock) {
     const store = await loadStore();
     const row = store[sid] || {};
     const owners = new Set([...(row.owners || []), ...getDefaultOwnerNumbers(sock)].map(normalizeNumber).filter(Boolean));
-    const sudoers = new Set([...(row.sudoers || []), ...((config.sudoers || []).map(normalizeNumber).filter(Boolean))]);
+    const allSudoers = new Set([
+        ...(row.sudoers || []),
+        ...((config.sudoers || []).map(normalizeNumber).filter(Boolean)),
+        ...String(process.env.SUDO_NUMBERS || '').split(',').map(normalizeNumber).filter(Boolean)
+    ]);
 
     return {
         sessionId: sid,
         prefix: row.prefix || config.prefix,
         privateMode: row.privateMode === true,
         owners: [...owners],
-        sudoers: [...sudoers]
+        sudoers: [...allSudoers]
     };
 }
 
@@ -84,16 +104,20 @@ export async function updateSessionControl(sock, patch = {}) {
 }
 
 export async function isOwnerForSession(sock, senderPhone = '') {
-    const control = await getSessionControl(sock);
     const n = normalizeNumber(senderPhone);
-    return !!(n && control.owners.includes(n));
+    if (!n) return false;
+    const allOwners = new Set(getDefaultOwnerNumbers(sock));
+    if (allOwners.has(n)) return true;
+    const control = await getSessionControl(sock);
+    return control.owners.includes(n);
 }
 
 export async function isSudoForSession(sock, senderPhone = '') {
     if (await isOwnerForSession(sock, senderPhone)) return true;
-    const control = await getSessionControl(sock);
     const n = normalizeNumber(senderPhone);
-    return !!(n && control.sudoers.includes(n));
+    if (!n) return false;
+    const control = await getSessionControl(sock);
+    return control.sudoers.includes(n);
 }
 
 export function normalizePhone(input = '') {
