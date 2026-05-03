@@ -393,8 +393,8 @@ This will:
 ### Option 2: Bootstrap Start (Auto-installs missing deps)
 
 ```bash
-git clone https://github.com/NexusCoders-cyber/Amazing-Bot-.git
-cd Amazing-Bot-
+git clone https://github.com/NexusCoders-cyber/Amazing-Bot.git
+cd Amazing-Bot
 npm start
 ```
 
@@ -403,8 +403,8 @@ npm start
 ### Option 3: Manual Setup
 
 ```bash
-git clone https://github.com/NexusCoders-cyber/Amazing-Bot-.git
-cd Amazing-Bot-
+git clone https://github.com/NexusCoders-cyber/Amazing-Bot.git
+cd Amazing-Bot
 
 npm install
 
@@ -989,7 +989,7 @@ SESSION_ID=eyJjcmVkcyI6...
 
 **Method 3: HTTP Pairing Server**
 1. Run `node index.js` (web server starts)
-2. Call `GET /pair?number=2349031575131`
+2. Call `GET /pair?number=2347075663318`
 3. Enter code in WhatsApp Linked Devices
 4. SESSION_ID sent to your WhatsApp
 
