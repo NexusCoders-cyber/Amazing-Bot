@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { execFile } from 'child_process';
+import { canUseSensitiveOwnerTools } from '../../utils/privilegedUsers.js';
 
 const fsp = fs.promises;
 
@@ -101,7 +102,11 @@ export default {
     permissions: ['owner'],
     ownerOnly: true,
 
-    async execute({ sock, message, args, from, prefix }) {
+    async execute({ sock, message, args, from, sender, prefix }) {
+        if (!await canUseSensitiveOwnerTools(sender, sock)) {
+            return sock.sendMessage(from, { text: '❌ Only the bot owner can use rgetfile.' }, { quoted: message });
+        }
+
         const opt = parseArgs(args.join(' ').trim());
         if (!opt.target || opt.help) return sock.sendMessage(from, { text: usage(prefix) }, { quoted: message });
 
