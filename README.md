@@ -5,18 +5,26 @@
 <img src="./attached_assets/stock_images/modern_technology_bo_69a427db.jpg" alt="Amazing Bot Banner" width="100%" style="border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); margin: 30px 0;">
 
 <p align="center">
-  <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=32&pause=1000&color=667EEA&center=true&vCenter=true&width=1000&height=80&lines=Welcome+to+Amazing+Bot!+%F0%9F%8E%89;Advanced+AI+Integration+%F0%9F%A4%96;Beautiful+Canvas+Graphics+%F0%9F%8E%A8;142%2B+Powerful+Commands+%E2%9A%A1;Professional+WhatsApp+Automation+%F0%9F%9A%80;Built+with+%E2%9D%A4%EF%B8%8F+by+Ilom" alt="Typing SVG" />
+  <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=32&pause=1000&color=667EEA&center=true&vCenter=true&width=1000&height=80&lines=Welcome+to+Amazing+Bot!+%F0%9F%8E%89;Advanced+AI+Integration+%F0%9F%A4%96;Beautiful+Canvas+Graphics+%F0%9F%8E%A8;150%2B+Powerful+Commands+%E2%9A%A1;Professional+WhatsApp+Automation+%F0%9F%9A%80;Built+with+%E2%9D%A4%EF%B8%8F+by+Ilom" alt="Typing SVG" />
 </p>
 
 ### 💫 *The Ultimate WhatsApp Automation Revolution* 💫
 
 <p align="center">
-  <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-20+-339933.svg?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js"></a>
+  <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-22+-339933.svg?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-4285F4.svg?style=for-the-badge&logo=opensourceinitiative&logoColor=white" alt="License"></a>
   <a href="package.json"><img src="https://img.shields.io/badge/Version-1.0.0-FF6B6B.svg?style=for-the-badge&logo=v&logoColor=white" alt="Version"></a>
   <a href="https://github.com/NexusCoders-cyber/Amazing-Bot-"><img src="https://img.shields.io/github/stars/NexusCoders-cyber/Amazing-Bot-?style=for-the-badge&logo=github&color=yellow" alt="Stars"></a>
   <a href="https://github.com/NexusCoders-cyber/Amazing-Bot-"><img src="https://img.shields.io/github/forks/NexusCoders-cyber/Amazing-Bot-?style=for-the-badge&logo=github&color=orange" alt="Forks"></a>
   <a href="https://github.com/NexusCoders-cyber/Amazing-Bot-/watchers"><img src="https://img.shields.io/github/watchers/NexusCoders-cyber/Amazing-Bot-?style=for-the-badge&logo=github&color=blue" alt="Watchers"></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Baileys-7.0.0--rc.9-25D366?style=for-the-badge&logo=whatsapp&logoColor=white" alt="Baileys">
+  <img src="https://img.shields.io/badge/MongoDB-4.4+-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB">
+  <img src="https://img.shields.io/badge/Gemini-2.5_Flash-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Gemini">
+  <img src="https://img.shields.io/badge/Canvas-@napi--rs-FF6B6B?style=for-the-badge&logo=html5&logoColor=white" alt="Canvas">
+  <img src="https://img.shields.io/badge/Made_in-Nigeria-008751?style=for-the-badge" alt="Made in Nigeria">
 </p>
 
 <h3>🎯 Built with ❤️ by <a href="https://ilom.tech">Ilom</a> | Powered by NexusCoders</h3>
@@ -25,14 +33,14 @@
   <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=180&section=header&text=Amazing%20Bot&fontSize=42&fontAlignY=30&animation=twinkling&fontColor=fff" width="100%"/>
 </p>
 
-> 🚀 **A next-generation WhatsApp bot** featuring cutting-edge AI integration, stunning canvas graphics, advanced economy system, comprehensive admin tools, and enterprise-grade security. Experience automation like never before!
+> 🚀 **A next-generation WhatsApp bot** featuring cutting-edge AI integration, stunning canvas graphics, advanced economy system, comprehensive admin tools, enterprise-grade security, persistent Mega.nz session management, and a multi-paired session system. Experience automation like never before!
 
 <p align="center">
   <a href="#-quick-deploy">🚀 Quick Deploy</a> •
   <a href="#-features">✨ Features</a> •
   <a href="#-installation">🔧 Installation</a> •
   <a href="#-command-guide">📖 Commands</a> •
-  <a href="#-api-reference">🌐 API</a> •
+  <a href="#-session-management">🔑 Sessions</a> •
   <a href="#-support">💬 Support</a>
 </p>
 
@@ -55,6 +63,12 @@
 <td width="50%">
 
 ### ✨ Latest Enhancements
+- ✅ **Mega.nz Session System** - ZIP-packaged auth upload + base64 URL session IDs
+- ✅ **Multi-Paired Sessions** - Multiple accounts linked simultaneously via Telegram bot
+- ✅ **LID/Phone Resolution** - Full WhatsApp LID-to-phone-number mapping
+- ✅ **Font System** - 16 Unicode font styles, per-user & global font settings
+- ✅ **Anti-Out Protection** - Auto re-add members who voluntarily leave groups
+- ✅ **No-Prefix Commands** - Owner can use commands without a prefix
 - ✅ **Beautiful Canvas Graphics** - Stunning visual cards for all commands
 - ✅ **Advanced Help System** - Interactive help with onReply support
 - ✅ **Epic Hangman Game** - Canvas-based game with reply functionality
@@ -62,7 +76,6 @@
 - ✅ **Anti-Link Protection** - Comprehensive link detection & actions
 - ✅ **Auto-Reaction System** - 20+ context-aware reactions
 - ✅ **Leveling System** - XP progression with visual rewards
-- ✅ **Self-Listening Mode** - Process own messages when needed
 - ✅ **Security Hardened** - Enterprise-grade protection
 - ✅ **Multi-Platform Deploy** - One-click deployment options
 
@@ -71,15 +84,17 @@
 
 ### 🔥 Key Highlights
 - ⚡ **Sub-100ms Response Time**
-- 🎨 **Canvas Graphics** - Professional visual cards
-- 🛡️ **Enterprise-Grade Security**
-- 🤖 **Multi-AI Integration** (GPT, Gemini)
-- 💾 **Optional Database** - Works without it!
-- 🌐 **10+ Languages Supported**
+- 🎨 **Canvas Graphics** - Professional visual cards via `@napi-rs/canvas`
+- 🛡️ **Enterprise-Grade Security** - Rate limiting, JWT, input validation
+- 🤖 **Multi-AI Integration** - Gemini 2.5 Flash, Groq LLaMA, Qwen, Claude
+- 💾 **Optional Database** - Works without MongoDB using JSON fallback
+- 🌐 **10+ Languages Supported** via font system
 - 📊 **Real-time Analytics Dashboard**
-- 🎮 **Interactive Games** - Reply-based gameplay
-- 💬 **Reply Handlers** - Smart message interactions
-- 🔘 **Interactive Buttons** - Quick command access
+- 🎮 **Interactive Games** - Reply-based gameplay with canvas visuals
+- 💬 **Reply & Chat Handlers** - Smart message interactions
+- 🔑 **Pairing Server** - Built-in `pair.js` with Mega.nz upload
+- 🤖 **Telegram Pairing Bot** - Pair new sessions via `@Ilompairbot`
+- 📱 **16 Unicode Font Styles** - Per-user and global font settings
 
 </td>
 </tr>
@@ -155,13 +170,14 @@
 
 | Component | Requirement | Status |
 |:---------:|:-----------:|:------:|
-| **Node.js** | 20.0 or higher | ✅ Required |
+| **Node.js** | 22.x or higher (^22.12.0 \| ^23.0.0 \| >=24.0.0) | ✅ Required |
 | **MongoDB** | 4.4 or higher | 🟡 Optional |
 | **WhatsApp Account** | Any | ✅ Required |
 | **Memory** | 512MB+ | ✅ Recommended |
 | **Storage** | 1GB+ | ✅ Recommended |
 | **Processor** | 1 vCPU+ | ✅ Recommended |
 | **Internet** | Stable Connection | ✅ Required |
+| **npm** | 10+ | ✅ Required |
 
 </div>
 
@@ -203,7 +219,7 @@
 
 ✅ **Done!** Your bot is now live 24/7
 
-> **Note:** The bot works perfectly without MongoDB - it will use temporary data storage.
+> **Note:** The bot works perfectly without MongoDB — it uses JSON file fallback for economy and font storage.
 
 </details>
 
@@ -234,7 +250,7 @@
 
 **4️⃣ Deploy:**
    - Railway auto-deploys on git push
-   - Check deployment logs for QR code
+   - Check deployment logs for pairing code
 
 ✅ **Production Ready!**
 
@@ -319,7 +335,7 @@
 **1️⃣ Import to Replit:**
    - Click "Import from GitHub"
    - Paste repository URL
-   - Replit auto-configures from `replit.md`
+   - Replit auto-configures
 
 **2️⃣ Environment Secrets:**
    - Click "Secrets" in sidebar
@@ -332,11 +348,11 @@
 **3️⃣ Run:**
    - Click "Run" button
    - Bot starts automatically
-   - Scan QR if no SESSION_ID set
+   - Database runs in simulated mode (no MongoDB needed)
 
 ✅ **Perfect for testing!**
 
-> **Note:** Replit works great without database - data is temporary until you add MongoDB URL.
+> **Note:** Replit detects `REPLIT_ENVIRONMENT` automatically and skips the MongoDB connection, using in-memory storage instead.
 
 </details>
 
@@ -350,14 +366,13 @@
 
 | Requirement | Status | Download |
 |:-----------:|:------:|:--------:|
-| **Node.js 20+** | ✅ Required | [Download](https://nodejs.org/) |
+| **Node.js 22+** | ✅ Required | [Download](https://nodejs.org/) |
+| **npm 10+** | ✅ Required | Bundled with Node.js |
 | **Git** | ✅ Required | [Download](https://git-scm.com/) |
 | **FFmpeg** | 🟡 Optional | [Download](https://ffmpeg.org/) |
 | **MongoDB** | 🟡 Optional | [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) |
 
 </div>
-
-> **Windows Users:** For shell scripts (backup, update, etc.), use [Git Bash](https://git-scm.com/downloads) or [WSL](https://docs.microsoft.com/en-us/windows/wsl/install). Alternatively, run commands manually from the scripts.
 
 ### Option 1: Automated Setup (Recommended)
 
@@ -375,7 +390,17 @@ This will:
 - ✅ Generate .env from template
 - ✅ Verify required binaries
 
-### Option 2: Manual Setup
+### Option 2: Bootstrap Start (Auto-installs missing deps)
+
+```bash
+git clone https://github.com/NexusCoders-cyber/Amazing-Bot-.git
+cd Amazing-Bot-
+npm start
+```
+
+> The `bootstrap-start.js` script automatically detects missing dependencies and runs `npm install` before launching `index.js`.
+
+### Option 3: Manual Setup
 
 ```bash
 git clone https://github.com/NexusCoders-cyber/Amazing-Bot-.git
@@ -386,7 +411,7 @@ npm install
 cp .env.example .env
 nano .env
 
-npm start
+node index.js
 ```
 
 <img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
@@ -398,67 +423,82 @@ npm start
 Create `.env` file with these required settings:
 
 ```env
-SESSION_ID=Ilom~base64_encoded_session_here
-OWNER_NUMBERS=1234567890,9876543210
+# ── Bot Identity ──────────────────────────────────────
+BOT_NAME=Ilom Bot
+BOT_VERSION=1.0.0
+BOT_DESCRIPTION=🧠 Amazing Bot created by Ilom
 PREFIX=.
-BOT_NAME=Amazing Bot
+OWNER_NO_PREFIX=true
 
-MONGODB_URL=mongodb+srv://user:pass@cluster.mongodb.net/botdb
-DATABASE_ENABLED=true
+# ── Ownership ─────────────────────────────────────────
+OWNER_NUMBERS=2349022424405,2349031575131
+SUDO_NUMBERS=2349031575131
+OWNER_NAME=Ilom
 
-OPENAI_API_KEY=sk-your-openai-api-key-here
-GEMINI_API_KEY=your-google-gemini-api-key
-OPENAI_MODEL=gpt-3.5-turbo
+# ── Session ───────────────────────────────────────────
+# Supports: ilombot--<base64(megaUrl)> | Ilom~<base64json> | raw JSON
+SESSION_ID=
 
-ENCRYPTION_KEY=your-secure-encryption-key-min-32-chars
-JWT_SECRET=your-jwt-secret-key-here
-SESSION_SECRET=your-session-secret-here
-
+# ── Mode ──────────────────────────────────────────────
 PUBLIC_MODE=true
 SELF_MODE=false
+AUTO_ONLINE=true
 AUTO_READ=false
-AUTO_TYPING=true
-MARK_ONLINE=true
+AUTO_TYPING=false
 
-MAX_CONCURRENT_COMMANDS=50
-COMMAND_COOLDOWN=3
-RATE_LIMIT_REQUESTS=20
-CACHE_SIZE=1000
+# ── Database ──────────────────────────────────────────
+DATABASE_ENABLED=true
+MONGODB_URL=mongodb+srv://user:pass@cluster.mongodb.net/botdb
+
+# ── AI APIs ───────────────────────────────────────────
+GEMINI_API_KEY=your-google-gemini-api-key
+GEMINI_MODEL=models/gemini-2.5-flash
+GROQ_API_KEY=your-groq-api-key
+GROQ_MODEL=llama-3.3-70b-versatile
+
+# ── Security ──────────────────────────────────────────
+ENCRYPTION_KEY=your-secure-encryption-key-min-32-chars
+JWT_SECRET=your-jwt-secret-key-here
 ```
 
 ### 📱 Getting SESSION_ID
 
-**Method 1: QR Code (Easiest)**
+**Method 1: Pairing Code (Default — no QR)**
 ```bash
 npm start
+# Enter your WhatsApp number when prompted
+# Enter the displayed code in WhatsApp → Linked Devices → Link with phone number
 ```
 
-**Method 2: From Running Bot**
-```bash
+**Method 2: Pairing Server**
+
+Use the built-in `pair.js` server to generate a session via HTTP:
 ```
+GET /pair?number=2349031575131
+```
+The server pairs the account, ZIPs the auth folder, uploads it to Mega.nz, and sends the `SESSION_ID` back to your WhatsApp chat.
+
+**Method 3: Telegram Bot**
+
+Send `/pair <your-number>` to `@Ilompairbot` on Telegram.
+
+**Method 4: Existing Session**
+
+Paste a previously generated `SESSION_ID` into `.env` — the bot auto-detects the format.
 
 ### 🗄️ Database Setup
 
 **Without Database (Quick Start)**
 ```env
-MONGODB_URL=mongodb://localhost:27017/ilombot
+DATABASE_ENABLED=false
 ```
+Economy and font data fall back to JSON files in `data/`.
 
-**With MongoDB (Production)**
-
-**Option 1: MongoDB Atlas (Free)**
+**With MongoDB Atlas (Production)**
 ```env
 MONGODB_URL=mongodb+srv://username:password@cluster.mongodb.net/botdb
+DATABASE_ENABLED=true
 ```
-
-**Option 2: Local MongoDB**
-```env
-MONGODB_URL=mongodb://localhost:27017/ilombot
-```
-
-**Option 3: Platform Managed**
-- Railway, Render, Heroku offer managed databases
-- Auto-inject connection strings
 
 <img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
 
@@ -478,17 +518,18 @@ MONGODB_URL=mongodb://localhost:27017/ilombot
 
 | Category | Features | Count |
 |:--------:|:--------:|:-----:|
-| 🤖 **AI & Chat** | OpenAI GPT, Gemini, Smart Responses | 15+ |
-| 🎮 **Games** | 8-ball, Trivia, Blackjack, Hangman | 12+ |
-| 💰 **Economy** | Currency, Daily Rewards, Gambling, Shop | 18+ |
-| 👑 **Admin** | Group Management, Moderation, Bans | 20+ |
-| 📥 **Downloaders** | YouTube, Instagram, TikTok, Facebook | 10+ |
-| 🔧 **Utilities** | QR, Encryption, Translate, Weather | 15+ |
-| 🎨 **Media** | Stickers, Filters, Compress, Convert | 12+ |
-| 🌐 **Info** | News, Search, Dictionary, Time | 10+ |
-| 👤 **Owner** | System Control, Backup, Execute Code | 9+ |
+| 🤖 **AI & Chat** | Gemini 2.5 Flash, Groq LLaMA, Qwen, Claude-proxy, STT, TTS, OCR | 15+ |
+| 🎮 **Games** | 8-ball, Trivia, Blackjack, Hangman, Math, Word, Memory | 12+ |
+| 💰 **Economy** | Currency, Daily/Weekly Rewards, Gambling, Bank, Shop | 18+ |
+| 👑 **Admin** | Group Management, Anti-link, Anti-spam, Anti-bad-word, Anti-out | 25+ |
+| 📥 **Downloaders** | YouTube, Instagram, TikTok, Facebook, Pinterest, Mediafire | 10+ |
+| 🔧 **Utilities** | QR, Encrypt/Decrypt, Translate, Weather, Calc, Hash, Base64 | 15+ |
+| 🎨 **Media** | Stickers, Filters, Compress, Convert, Watermark, Meme | 12+ |
+| 🌐 **Info** | News, Search, Dictionary, Wikipedia, Time | 10+ |
+| 👤 **Owner** | System Control, Backup, Eval, Exec, Broadcast, Sudo | 15+ |
+| 🖋️ **Fonts** | 16 Unicode font styles, per-user & global setting | 16 fonts |
 
-**Total: 142+ Commands** loaded and tested!
+**Total: 150+ Commands** loaded and tested!
 
 <img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
 
@@ -501,34 +542,34 @@ MONGODB_URL=mongodb://localhost:27017/ilombot
 <td width="33%" align="center">
 
 #### 🔐 Security
-- Multi-level permissions
-- Rate limiting
-- Input validation
-- Session encryption
+- Multi-level permissions (owner / sudo / admin / user)
+- LID-to-phone number resolution for all WhatsApp account types
+- Rate limiting & anti-spam detection
+- Input validation & sanitization
 - JWT authentication
-- Credential sanitization
+- Session encryption via Mega.nz + ZIP
 
 </td>
 <td width="33%" align="center">
 
 #### ⚡ Performance
 - Sub-100ms responses
-- Efficient caching
-- Database pooling
-- Async processing
-- Memory optimization
-- Queue management
+- Efficient NodeCache + optional Redis
+- MongoDB connection pooling
+- Async command processing
+- Bootstrap auto-install on cold start
+- Health check keep-alive ping every 4 minutes
 
 </td>
 <td width="33%" align="center">
 
 #### 🌐 Platform Support
-- Universal compatibility
-- Cloud-native design
+- Universal Baileys v7 compatibility
+- Cloud-native design (Koyeb, Railway, Render, Heroku, Replit)
 - Auto-scaling ready
-- Zero-downtime updates
-- Health monitoring
-- Multi-platform deploy
+- Zero-downtime reconnection with exponential backoff
+- Health monitoring via `/health` endpoint
+- Multi-paired session support
 
 </td>
 </tr>
@@ -540,20 +581,22 @@ MONGODB_URL=mongodb://localhost:27017/ilombot
 <tr>
 <td width="50%">
 
-- 🔄 **Auto-Recovery** - Reconnects automatically
-- 📊 **Real-time Stats** - Live monitoring
-- 🌍 **Multi-Language** - 10+ languages
-- 🎨 **Canvas Graphics** - Professional cards
-- 💾 **Smart Storage** - Works with/without DB
+- 🔄 **Auto-Recovery** — Reconnects automatically (up to 10 attempts)
+- 📊 **Real-time Stats** — Live `/stats` API endpoint
+- 🌍 **Multi-Language** — 10+ supported languages
+- 🎨 **Canvas Graphics** — Professional cards for every event
+- 💾 **Smart Storage** — MongoDB + JSON file fallback
+- 🖋️ **Font System** — 16 Unicode font styles per user
 
 </td>
 <td width="50%">
 
-- 🔔 **Notifications** - Owner alerts
-- 📈 **Analytics** - Usage tracking
-- 🛡️ **Anti-Spam** - Smart detection
-- ⚡ **Auto-Reaction** - Context-aware
-- 🎯 **Leveling System** - XP progression
+- 🔔 **Owner Alerts** — Startup & error notifications
+- 📈 **Analytics** — Command usage tracking
+- 🛡️ **Anti-Spam** — Frequency + content similarity detection
+- ⚡ **Auto-Reaction** — 20+ context-aware emoji reactions
+- 🎯 **Leveling System** — XP progression with canvas cards
+- 🤖 **Telegram Pairing** — Pair sessions remotely
 
 </td>
 </tr>
@@ -563,51 +606,46 @@ MONGODB_URL=mongodb://localhost:27017/ilombot
 
 ## 📖 Command Guide
 
-### ✨ Enhanced Help Command
+### ✨ How Commands Work
 
-<div align="center">
+The bot uses a **prefix-based command system** (default: `.`) with the following flow:
 
-The bot features a **stylish, user-personalized help menu** with:
+1. **Message arrives** → `messageHandler.js` processes it
+2. **Prefix check** → stripped if present; no-prefix commands checked separately
+3. **Command lookup** → `commandManager.js` checks name → aliases → external alias map
+4. **Permission gate** → owner → sudo → admin → user (checked in order)
+5. **Cooldown check** → per-user per-command cooldown (skipped for owner/sudo)
+6. **Execute** → command's `execute()` function runs with full context
 
-<table>
-<tr>
-<td align="center" width="33%">
-<b>🎯 User Info Display</b><br>
-Shows name, ID, status, credits
-</td>
-<td align="center" width="33%">
-<b>⚡ Real-time Stats</b><br>
-Current date, time, bot status
-</td>
-<td align="center" width="33%">
-<b>📱 Interactive Buttons</b><br>
-Quick access to features
-</td>
-</tr>
-<tr>
-<td align="center" width="33%">
-<b>💬 Reply Support</b><br>
-Detailed command assistance
-</td>
-<td align="center" width="33%">
-<b>🎨 Beautiful Formatting</b><br>
-Clean, organized categories
-</td>
-<td align="center" width="33%">
-<b>🌐 Global Images</b><br>
-Enhanced visual appeal
-</td>
-</tr>
-</table>
+> **Owner No-Prefix:** When `OWNER_NO_PREFIX=true`, owners and sudo users can run commands without the prefix. Unknown words fallback to the `ilom` AI command.
 
-</div>
+---
 
 ### 🎯 Essential Commands
 
-```bash
+```
 .help              .menu              .ping              
 .info              .status            .support           
+.about             .uptime            .up2               
+.rank              .levelup           .prefix
 ```
+
+### 🖋️ Font System
+
+The bot has a full Unicode font system. Every bot message can be rendered in a different font — set per-user or globally by the owner.
+
+```
+.setfont list                    — see all 16 fonts with previews
+.setfont <name>                  — set your personal font
+.setfont preview <name>          — preview a specific font
+.setfont reset                   — reset your font to normal
+.setfont global <name>           — (owner) set font for ALL users
+.setfont global reset            — (owner) reset global font
+```
+
+**Available fonts:** `bold` · `italic` · `bolditalic` · `script` · `boldscript` · `fraktur` · `boldfraktur` · `doublestruck` · `sans` · `sansbold` · `sansitalic` · `sansbolditalic` · `monospace` · `smallcaps` · `circled` · `fullwidth`
+
+**Quick aliases:** `b`=bold · `i`=italic · `bi`=bolditalic · `bs`=boldscript · `m`=monospace · `sc`=smallcaps · `n`/`off`=reset
 
 ### 👑 Admin Commands
 
@@ -616,14 +654,17 @@ Enhanced visual appeal
 
 <br>
 
-```bash
+```
 .kick @user          .ban @user         .unban @user       
 .promote @user       .demote @user      .mute @user        
 .unmute @user        .warn @user        .unwarn @user      
-.tagall [msg]        .hidetag [msg]     .setdesc <text>    
-.setname <text>      .groupinfo         .antilink on/off   
-.delete              
+.resetwarn @user     .tagall [msg]      .hidetag [msg]     
+.setdesc <text>      .setname <text>    .groupinfo         
+.antilink on/off     .antiword on/off   .antispam on/off   
+.antiout on/off      .delete            .listadmin
 ```
+
+> **Anti-Out:** When enabled and bot is admin, members who voluntarily leave are automatically re-added. Throttled to once per 10 minutes per user.
 
 </details>
 
@@ -634,11 +675,15 @@ Enhanced visual appeal
 
 <br>
 
-```bash
-.ai <message>        .chatgpt <msg>     .gemini <msg>      
-.analyze <text>      .translate <txt>   .imagine <prompt>  
-.stt [audio]         .tts <text>        .ocr [image]       
 ```
+.ai <message>        .gemini <msg>      .gpt <msg>
+.qwen <msg>          .grok <msg>        .deepseek <msg>
+.analyze <text>      .translate <txt>   .imagine <prompt>  
+.stt [audio]         .tts <text>        .ocr [image]
+.storyai <prompt>    .triviaai          .codeai <code>
+```
+
+> Commands like `.gemini`, `.gpt`, `.deepseek`, `.grok`, `.qwen` all route through the unified `ai` command via the alias map in `axisAliasMap.js`.
 
 </details>
 
@@ -649,12 +694,14 @@ Enhanced visual appeal
 
 <br>
 
-```bash
+```
 .balance             .daily             .weekly            
 .work                .gamble <amt>      .rob @user         
 .transfer @user $    .shop              .buy <item>        
-.inventory           .sell <item>       .leaderboard       
+.inventory           .sell <item>       .leaderboard
 ```
+
+> Starting balance: **$1,000**. Daily reward: **$100**. All amounts validated (max $1,000,000 per transaction).
 
 </details>
 
@@ -665,12 +712,13 @@ Enhanced visual appeal
 
 <br>
 
-```bash
-.8ball <question>    .dice [sides]      .coin              
+```
+.8ball <question>    .dice [sides]      .coin (coinflip)
 .rps <choice>        .joke              .quote             
 .trivia              .blackjack         .tictactoe         
 .hangman             .math              .word              
-.memory              
+.memory              .funfact           .riddles
+.inspire             .guess
 ```
 
 </details>
@@ -682,12 +730,14 @@ Enhanced visual appeal
 
 <br>
 
-```bash
-.ytdl <url>          .ytmp3 <url>       .ytmp4 <url>       
-.igdl <url>          .fbdl <url>        .tikdl <url>       
-.twdl <url>          .pinterest <url>   .mediafire <url>   
-.gdrive <url>        
 ```
+.ytdl <url>          .play <query>      .song <query>
+.ytb <url>           .igdl <url>        .autolink <url>
+.fbdl <url>          .tikdl <url>       .pinterest <url>
+.mediafire <url>
+```
+
+> `.autolink` is the universal downloader — send any supported URL (YouTube, TikTok, Instagram, Facebook) and the bot auto-detects the platform.
 
 </details>
 
@@ -698,11 +748,11 @@ Enhanced visual appeal
 
 <br>
 
-```bash
-.sticker             .filter <type>     .blur              
+```
+.sticker (s/wm)      .filter <type>     .blur              
 .compress            .resize <width>    .crop              
 .watermark           .meme <text>       .toaudio           
-.toimg               .tovideo           .gif               
+.toimg               .tovideo           .gif
 ```
 
 </details>
@@ -714,11 +764,13 @@ Enhanced visual appeal
 
 <br>
 
-```bash
+```
 .qr <text>           .encrypt <text>    .decrypt <text>    
 .hash <text>         .base64 <text>     .short <url>       
-.weather <city>      .news              .search <query>    
-.time                .uptime            .profile [@user]   
+.weather <city>      .news [category]   .search <query>    
+.wiki <query>        .time              .uptime            
+.up2                 .calc <expr>       .profile [@user]
+.rank [@user]        .levelup           .save
 ```
 
 </details>
@@ -730,16 +782,28 @@ Enhanced visual appeal
 
 <br>
 
-```bash
+```
 .restart             .shutdown          .update            
 .backup              .restore           .eval <code>       
 .exec <command>      .setprefix <pfx>   .setstatus <txt>   
 .setpp [image]       .broadcast <msg>   .join <link>       
-.leave               .addpremium @user  .removepremium     
-.gban @user          .gunban @user      
+.leave               .addpremium @user  .removepremium
+.addsudo @user       .removesudo @user  .listsudo
+.gban @user          .gunban @user      .selfmode
+.stats               .getbot            .callad <msg>
 ```
 
+> **Sudo users** (added via `.addsudo`) can execute all owner-category commands, bypass bans, bypass rate limits, and use no-prefix mode.
+
 </details>
+
+### 📞 Contact & Support
+
+```
+.callad <message>    — Send a message directly to the bot owner
+.getbot              — Get Telegram pairing bot details (@Ilompairbot)
+.support             — Get WhatsApp group, Telegram channel & group links
+```
 
 <img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
 
@@ -753,23 +817,19 @@ Enhanced visual appeal
 <tr>
 <td align="center" width="25%">
 <b>👋 Welcome Messages</b><br>
-Beautiful gradient cards<br>
-with user avatars
+Gradient cards with profile pictures
 </td>
 <td align="center" width="25%">
 <b>👋 Goodbye Messages</b><br>
-Stylish farewell cards<br>
-with user info
+Stylish farewell cards with user info
 </td>
 <td align="center" width="25%">
 <b>👑 Promotion/Demotion</b><br>
-Celebration-themed<br>
-notification cards
+Colour-coded notification cards
 </td>
 <td align="center" width="25%">
 <b>📝 Group Updates</b><br>
-Name & description<br>
-change notifications
+Name & description change cards
 </td>
 </tr>
 </table>
@@ -780,18 +840,15 @@ change notifications
 <tr>
 <td align="center" width="33%">
 <b>🎯 Level-Up System</b><br>
-XP-based progression<br>
-Beautiful achievement cards
+XP-based progression with canvas progress bars
 </td>
 <td align="center" width="33%">
 <b>⚡ Auto-Reactions</b><br>
-20+ context-aware emojis<br>
-Smart sentiment analysis
+20+ keyword-triggered emoji reactions
 </td>
 <td align="center" width="33%">
 <b>🎨 Custom Graphics</b><br>
-Professional design<br>
-Fully customizable
+All cards built with @napi-rs/canvas
 </td>
 </tr>
 </table>
@@ -804,7 +861,7 @@ Fully customizable
 
 ### Base URL
 ```
-http://localhost:5000/api
+http://localhost:5000
 ```
 
 ### 📊 Available Endpoints
@@ -813,14 +870,13 @@ http://localhost:5000/api
 
 | Endpoint | Method | Description |
 |:--------:|:------:|:-----------:|
-| `/api/health` | GET | Health check |
-| `/api/stats` | GET | System statistics |
-| `/api/commands` | GET | List all commands |
-| `/api/users` | GET | User management |
-| `/api/groups` | GET | Group management |
-| `/api/qr` | GET | QR code for pairing |
-| `/api/messages` | POST | Send messages |
-| `/api/analytics` | GET | Usage analytics |
+| `/` | GET | Bot info & available endpoints |
+| `/health` | GET | Full health check (DB, cache, WA) |
+| `/stats` | GET | System statistics & command counts |
+| `/api/status` | GET | API status & registered routes |
+| `/qr` | GET | QR code page (if `QR_SCANNER_ENABLED=true`) |
+| `/qr/image` | GET | QR code PNG image |
+| `/qr/data` | GET | QR code as base64 data URL |
 
 </div>
 
@@ -829,22 +885,117 @@ http://localhost:5000/api
 ```json
 {
   "status": "healthy",
-  "timestamp": "2025-11-02T00:00:00.000Z",
-  "uptime": "5h 23m 15s",
-  "memory": {
-    "used": "45.2 MB",
-    "total": "512 MB"
+  "services": {
+    "database": true,
+    "cache": true,
+    "whatsapp": true
   },
-  "whatsapp": {
-    "connected": true,
-    "qr_scanned": true
-  },
-  "database": {
-    "connected": true,
-    "type": "mongodb"
-  }
+  "uptime": 19285.3,
+  "memory": { "rss": 89128960, "heapUsed": 52428800 },
+  "timestamp": "2026-05-03T12:00:00.000Z"
 }
 ```
+
+> Set `HEALTHCHECK_STRICT=true` to return HTTP 503 when any service is degraded (useful for load balancers).
+
+<img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
+
+## 🔑 Session Management
+
+<div align="center">
+
+### Multiple Session Format Support
+
+<table>
+<tr>
+<td align="center" width="25%">
+<b>ilombot-- Format</b><br>
+<sub>Default (Mega.nz URL)</sub>
+</td>
+<td align="center" width="25%">
+<b>Ilom~ Format</b><br>
+<sub>Base64 JSON (legacy)</sub>
+</td>
+<td align="center" width="25%">
+<b>Direct JSON</b><br>
+<sub>Raw creds object</sub>
+</td>
+<td align="center" width="25%">
+<b>Multi-File Baileys</b><br>
+<sub>Auto-generated locally</sub>
+</td>
+</tr>
+</table>
+
+</div>
+
+### How the Session System Works
+
+```
+pair.js                           index.js
+──────────────────                ──────────────────────────────────────
+1. User calls /pair?number=X      1. Read SESSION_ID from .env / env var
+2. Request pairing code           2. Detect format (ilombot-- / Ilom~ / JSON)
+3. Code sent to user via HTTP     3. ilombot-- → decode base64 → full Mega URL
+4. User links in WhatsApp         4. Download ZIP from Mega.nz (megajs)
+5. saveCreds() fires              5. Extract creds.json + keys/ from ZIP
+6. ZIP auth folder (archiver)     6. Write to cache/auth_info_baileys/
+7. Upload ZIP to Mega.nz          7. Connect with Baileys useMultiFileAuthState
+8. Encode: ilombot--<base64url>   8. On first pair → build & save new SESSION_ID
+9. Send SESSION_ID to WhatsApp    9. Fallback: legacy Koyeb server if Mega fails
+```
+
+**Supported Formats:**
+
+```env
+# New format — Mega.nz URL encoded as base64
+SESSION_ID=ilombot--aHR0cHM6Ly9tZWdhLm56L2ZpbGUv...
+
+# Legacy format — base64 JSON with creds + keys
+SESSION_ID=Ilom~eyJjcmVkcyI6eyJub2lzZUtleS...
+
+# Raw JSON string
+SESSION_ID={"creds":{"noiseKey":...}}
+
+# Plain base64 JSON
+SESSION_ID=eyJjcmVkcyI6...
+```
+
+### Getting Your Session
+
+<table>
+<tr>
+<td width="33%">
+
+**Method 1: CLI Pairing**
+1. Leave `SESSION_ID` empty
+2. Run `npm start`
+3. Enter phone number when prompted
+4. Enter pairing code in WhatsApp
+5. Session auto-saved to `.env`
+
+</td>
+<td width="33%">
+
+**Method 2: Telegram Bot**
+1. Open `@Ilompairbot` on Telegram
+2. Send `/pair <your-number>`
+3. Enter pairing code in WhatsApp
+4. Copy `SESSION_ID` from chat
+5. Set in your `.env`
+
+</td>
+<td width="33%">
+
+**Method 3: HTTP Pairing Server**
+1. Run `node index.js` (web server starts)
+2. Call `GET /pair?number=2349031575131`
+3. Enter code in WhatsApp Linked Devices
+4. SESSION_ID sent to your WhatsApp
+
+</td>
+</tr>
+</table>
 
 <img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
 
@@ -857,100 +1008,88 @@ http://localhost:5000/api
 
 **Problem:** `Operation users.findOne() buffering timed out after 10000ms`
 
-**✅ Solution:** 
-This is now automatically handled! The bot will:
-- Use real database if connected
-- Use temporary data if database unavailable
-- No timeout errors sent to your WhatsApp
+**✅ Solution:**
+The bot handles this automatically. It detects local/development URLs and skips the real MongoDB connection, using JSON-file fallback instead.
 
-**For production:**
+For production:
 ```env
 MONGODB_URL=mongodb+srv://username:password@cluster.mongodb.net/botdb
-```
-
-**For testing without database:**
-```env
-MONGODB_URL=mongodb://localhost:27017/ilombot
+DATABASE_ENABLED=true
 ```
 
 </details>
 
 <details>
-<summary><b>❌ Canvas/Graphics Not Working</b></summary>
+<summary><b>❌ Session Invalid / Bot Keeps Disconnecting</b></summary>
 
 <br>
 
-**Problem:** Canvas images not generating for group events
+**Problem:** Bot shows "Session Invalid" (401) or `loggedOut` disconnect reason.
 
 **✅ Solution:**
-Ensure canvas dependencies are installed:
-```bash
-sudo apt-get install build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+The bot automatically detects a 401/loggedOut code, clears stale auth files, removes the bad `SESSION_ID` from `.env`, and prompts for a new pairing code.
 
-brew install pkg-config cairo pango libpng jpeg giflib librsvg
-
-npm install canvas --build-from-source
-```
-
-</details>
-
-<details>
-<summary><b>❌ Commands Not Working</b></summary>
-
-<br>
-
-**Problem:** Bot doesn't respond to commands
-
-**✅ Solution:**
-1. Check prefix is correct in `.env` file
-2. Verify bot is running: `npm start`
-3. Check logs for errors: `tail -f logs/bot.log`
-4.Ensure you have permission to use the command
-5. Test with basic command: `.ping`
-6. Verify WhatsApp connection is active
-7. Check if command is loaded: `.help`
-
-</details>
-
-<details>
-<summary><b>❌ Session Expired/Invalid</b></summary>
-
-<br>
-
-**Problem:** Bot keeps disconnecting or shows "Session Invalid"
-
-**✅ Solution:**
-1. Delete existing session files
-2. Clear `cache/auth_info_baileys/` folder
-3. Remove SESSION_ID from `.env`
-4. Restart bot and scan new QR code
-5. Save new SESSION_ID for future use
-
+To manually reset:
 ```bash
 rm -rf cache/auth_info_baileys/
+# Remove SESSION_ID from .env
 npm start
 ```
 
 </details>
 
 <details>
-<summary><b>❌ High Memory Usage</b></summary>
+<summary><b>❌ Canvas / Graphics Not Working</b></summary>
 
 <br>
 
-**Problem:** Bot consuming too much memory
+**Problem:** Canvas images not generating for group events or commands.
 
 **✅ Solution:**
-1. Reduce CACHE_SIZE in `.env`
-2. Clear temporary files: `npm run cleanup`
-3. Restart bot periodically
-4. Optimize database queries
-5. Monitor with: `npm run logs`
+Install system libraries required by `@napi-rs/canvas`:
+```bash
+# Ubuntu/Debian
+sudo apt-get install build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
 
-```env
-CACHE_SIZE=500
-MAX_CONCURRENT_COMMANDS=25
+# macOS
+brew install pkg-config cairo pango libpng jpeg giflib librsvg
+
+# Rebuild canvas
+npm rebuild @napi-rs/canvas
 ```
+
+</details>
+
+<details>
+<summary><b>❌ Commands Not Responding</b></summary>
+
+<br>
+
+**Problem:** Bot is connected but doesn't respond to commands.
+
+**✅ Solutions:**
+1. Check prefix is correct in `.env` (default: `.`)
+2. Confirm `PUBLIC_MODE=true` (otherwise only owner can use commands)
+3. Verify WhatsApp connection: `sock.user` must be set
+4. Test with: `.ping`
+5. Check if command exists: `.help <commandname>`
+6. If using LID accounts, ensure the bot has processed the group metadata at least once
+
+</details>
+
+<details>
+<summary><b>❌ Mega.nz Download Failed</b></summary>
+
+<br>
+
+**Problem:** Session download from Mega.nz fails during startup.
+
+**✅ Solution:**
+The bot automatically falls back to the Koyeb server:
+```
+https://existing-madelle-lance-ui-efecfdce.koyeb.app/download/<fileId>
+```
+If both fail, the bot clears the SESSION_ID and prompts for a new pairing code.
 
 </details>
 
@@ -972,7 +1111,7 @@ Automated installation
 <td align="center" width="33%">
 <b>🧹 Maintenance</b><br>
 <code>npm run cleanup</code><br>
-Clean temporary files
+Clean temp files (preserves session)
 </td>
 <td align="center" width="33%">
 <b>💾 Backup</b><br>
@@ -995,177 +1134,6 @@ Run migrations
 <b>🔍 Logs</b><br>
 <code>npm run logs</code><br>
 View PM2 logs
-</td>
-</tr>
-</table>
-
-</div>
-
-### Script Details
-
-| Script | Purpose | Safe Mode |
-|:------:|:-------:|:---------:|
-| `cleanup.js` | Removes temp files, preserves session | ✅ Yes |
-| `backup.sh` | Backs up session, media, database | ✅ Yes |
-| `restore.sh` | Restores from backup with confirmation | ⚠️ Overwrites |
-| `migrate.js` | Database schema migrations | ✅ With rollback |
-| `seed.js` | Populate DB with demo data | ✅ Idempotent |
-| `update.js` | Smart update with environment detection | ✅ Platform-aware |
-| `update.sh` | Shell-based git pull + dependencies | ⚠️ Stashes changes |
-
-<img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
-
-## 🔐 Session Management
-
-<div align="center">
-
-### Multiple Session Format Support
-
-<table>
-<tr>
-<td align="center" width="20%">
-<b>Ilom Format</b><br>
-<sub>Default</sub>
-</td>
-<td align="center" width="20%">
-<b>Base64 JSON</b><br>
-<sub>Encoded</sub>
-</td>
-<td align="center" width="20%">
-<b>Direct JSON</b><br>
-<sub>Raw</sub>
-</td>
-<td align="center" width="20%">
-<b>Mega.nz Cloud</b><br>
-<sub>Cloud Storage</sub>
-</td>
-<td align="center" width="20%">
-<b>Multi-File</b><br>
-<sub>Baileys</sub>
-</td>
-</tr>
-</table>
-
-</div>
-
-### Supported Formats
-
-**1. Ilom Format (Default)**
-```
-SESSION_ID=Ilom~eyJub2lzZUtleS...
-```
-
-**2. Base64 JSON**
-```
-SESSION_ID=eyJjcmVkcyI6eyJub...
-```
-
-**3. Direct JSON**
-```
-SESSION_ID={"creds":{"noiseKey":...}}
-```
-
-**4. Mega.nz Cloud**
-```
-SESSION_ID=sypher™--MEGA_FILE_ID
-```
-
-**5. Multi-File Baileys (Auto-generated)**
-- Location: `cache/auth_info_baileys/`
-- Contains: `creds.json` + `keys/*.json`
-
-### Getting Your Session
-
-<table>
-<tr>
-<td width="33%">
-
-**Method 1: QR Code**
-1. Leave SESSION_ID empty
-2. Run `npm start`
-3. Scan QR with WhatsApp
-4. Session auto-saved
-
-</td>
-<td width="33%">
-
-**Method 2: Pairing Code**
-```bash
-QR_SCANNER_ENABLED=true
-npm start
-```
-
-</td>
-<td width="33%">
-
-**Method 3: Existing Session**
-- Paste SESSION_ID in `.env`
-- Bot auto-detects format
-- Converts automatically
-
-</td>
-</tr>
-</table>
-
-<img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
-
-## 📚 Documentation
-
-<div align="center">
-
-### Comprehensive Guides & Resources
-
-<table>
-<tr>
-<td align="center" width="25%">
-<a href="./docs/guides/installation.md">
-<b>📖 Installation</b><br>
-Complete setup guide
-</a>
-</td>
-<td align="center" width="25%">
-<a href="./docs/guides/configuration.md">
-<b>⚙️ Configuration</b><br>
-Environment setup
-</a>
-</td>
-<td align="center" width="25%">
-<a href="./docs/guides/deployment.md">
-<b>🚀 Deployment</b><br>
-Production guide
-</a>
-</td>
-<td align="center" width="25%">
-<a href="./docs/commands/">
-<b>📝 Commands</b><br>
-Full reference
-</a>
-</td>
-</tr>
-<tr>
-<td align="center" width="25%">
-<a href="./docs/guides/plugins.md">
-<b>🔌 Plugins</b><br>
-Development guide
-</a>
-</td>
-<td align="center" width="25%">
-<a href="./docs/guides/troubleshooting.md">
-<b>🐛 Troubleshooting</b><br>
-Common issues
-</a>
-</td>
-<td align="center" width="25%">
-<a href="./SECURITY.md">
-<b>🔐 Security</b><br>
-Security policy
-</a>
-</td>
-<td align="center" width="25%">
-<a href="./CONTRIBUTING.md">
-<b>🤝 Contributing</b><br>
-Contribution guide
-</a>
 </td>
 </tr>
 </table>
@@ -1211,30 +1179,6 @@ Community Hub
 <b>🐛 Report Bugs</b><br>
 Issue Tracker
 </a>
-</td>
-</tr>
-</table>
-
-<img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
-
-### 💡 Get Help Instantly
-
-<table>
-<tr>
-<td width="33%" align="center">
-<h4>📚 Documentation</h4>
-Complete guides and tutorials<br>
-<a href="docs/README.md">Read Docs</a>
-</td>
-<td width="33%" align="center">
-<h4>❓ FAQ</h4>
-Common questions answered<br>
-<a href="docs/guides/troubleshooting.md">View FAQ</a>
-</td>
-<td width="33%" align="center">
-<h4>🎯 Examples</h4>
-Sample code & tutorials<br>
-<a href="examples/">Browse Examples</a>
 </td>
 </tr>
 </table>
@@ -1287,12 +1231,14 @@ Sample code & tutorials<br>
 <td width="50%">
 
 ### 🔧 Core Technologies
-- 🎯 **[Baileys](https://github.com/WhiskeySockets/Baileys)** - WhatsApp API
-- 🤖 **[OpenAI](https://openai.com)** - GPT Integration
-- 🧠 **[Google Gemini](https://ai.google.dev)** - AI Capabilities
-- 🖼️ **[Canvas](https://www.npmjs.com/package/canvas)** - Graphics
-- 📦 **[Node.js](https://nodejs.org)** - Runtime
-- 💾 **[MongoDB](https://www.mongodb.com)** - Database
+- 🎯 **[Baileys v7](https://github.com/WhiskeySockets/Baileys)** — WhatsApp Multi-Device API
+- 🤖 **[Google Gemini](https://ai.google.dev)** — Gemini 2.5 Flash AI
+- 🧠 **[Groq](https://groq.com)** — LLaMA 3.3 70B inference
+- 🖼️ **[@napi-rs/canvas](https://github.com/Brooooooklyn/canvas)** — High-performance canvas
+- 📦 **[Node.js 22](https://nodejs.org)** — Runtime
+- 💾 **[MongoDB + Mongoose](https://www.mongodb.com)** — Database
+- ☁️ **[Mega.nz (megajs)](https://github.com/nicktindall/megajs)** — Session cloud storage
+- 📦 **[Archiver + Unzipper](https://www.npmjs.com/package/archiver)** — ZIP session packaging
 
 </td>
 <td width="50%">
@@ -1304,108 +1250,11 @@ Sample code & tutorials<br>
 - 🎨 **Designers**
 - 🌍 **Community**
 - ⭐ **Stargazers**
+- 🇳🇬 **Made with 🤍 in Nigeria**
 
 </td>
 </tr>
 </table>
-
-</div>
-
-<img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
-
-## 📊 Project Statistics
-
-<div align="center">
-
-<a href="https://github.com/NexusCoders-cyber/Amazing-Bot-">
-  <img src="https://github-readme-stats.vercel.app/api?username=NexusCoders-cyber&show_icons=true&theme=radical&hide_border=true&bg_color=0D1117&title_color=667EEA&icon_color=667EEA" alt="GitHub Stats" width="48%"/>
-</a>
-
-<a href="https://github.com/NexusCoders-cyber/Amazing-Bot-">
-  <img src="https://github-readme-streak-stats.herokuapp.com/?user=NexusCoders-cyber&theme=radical&hide_border=true&background=0D1117&stroke=667EEA&ring=667EEA&fire=FF6B6B&currStreakLabel=667EEA" alt="GitHub Streak" width="48%"/>
-</a>
-
-<img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
-
-<a href="https://github.com/NexusCoders-cyber/Amazing-Bot-">
-  <img src="https://github-readme-stats.vercel.app/api/top-langs/?username=NexusCoders-cyber&layout=compact&theme=radical&hide_border=true&bg_color=0D1117&title_color=667EEA" alt="Top Languages" width="48%"/>
-</a>
-
-<a href="https://github.com/NexusCoders-cyber/Amazing-Bot-/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=NexusCoders-cyber/Amazing-Bot-&max=500&columns=20&anon=1" alt="Contributors" width="48%"/>
-</a>
-
-</div>
-
-<img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
-
-## 🏆 Achievements & Milestones
-
-<div align="center">
-
-<table>
-<tr>
-<td align="center" width="25%">
-<img src="https://img.shields.io/badge/⭐-1K+-yellow?style=for-the-badge" alt="Stars"><br>
-<b>GitHub Stars</b>
-</td>
-<td align="center" width="25%">
-<img src="https://img.shields.io/badge/🍴-500+-orange?style=for-the-badge" alt="Forks"><br>
-<b>Repository Forks</b>
-</td>
-<td align="center" width="25%">
-<img src="https://img.shields.io/badge/👥-10K+-blue?style=for-the-badge" alt="Users"><br>
-<b>Active Users</b>
-</td>
-<td align="center" width="25%">
-<img src="https://img.shields.io/badge/💬-1M+-green?style=for-the-badge" alt="Messages"><br>
-<b>Messages Processed</b>
-</td>
-</tr>
-</table>
-
-</div>
-
-<img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
-
-## 🤝 Contributing
-
-<div align="center">
-
-We welcome contributions from the community! 
-
-### How to Contribute
-
-<table>
-<tr>
-<td align="center" width="25%">
-<b>1️⃣ Fork</b><br>
-Fork the repository
-</td>
-<td align="center" width="25%">
-<b>2️⃣ Branch</b><br>
-Create feature branch
-</td>
-<td align="center" width="25%">
-<b>3️⃣ Commit</b><br>
-Make your changes
-</td>
-<td align="center" width="25%">
-<b>4️⃣ PR</b><br>
-Open pull request
-</td>
-</tr>
-</table>
-
-### Contribution Guidelines
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 </div>
 
@@ -1419,107 +1268,13 @@ This project is licensed under the **MIT License**
 
 See the [LICENSE](LICENSE) file for details
 
-### MIT License Summary
-
-<table>
-<tr>
-<td align="center" width="33%">
-✅ <b>Commercial Use</b><br>
-Use for business
-</td>
-<td align="center" width="33%">
-✅ <b>Modification</b><br>
-Modify the code
-</td>
-<td align="center" width="33%">
-✅ <b>Distribution</b><br>
-Share with others
-</td>
-</tr>
-<tr>
-<td align="center" width="33%">
-✅ <b>Private Use</b><br>
-Use privately
-</td>
-<td align="center" width="33%">
-⚠️ <b>Liability</b><br>
-No warranty
-</td>
-<td align="center" width="33%">
-⚠️ <b>Trademark</b><br>
-No trademark rights
-</td>
-</tr>
-</table>
-
 </div>
-
-<img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
-
-## 🔒 Security
-
-<div align="center">
-
-### Security is Our Priority
-
-Found a security issue? Please report it responsibly!
-
-<table>
-<tr>
-<td align="center" width="50%">
-<b>🔐 Report Security Issues</b><br>
-<a href="SECURITY.md">View Security Policy</a>
-</td>
-<td align="center" width="50%">
-<b>📧 Contact Security Team</b><br>
-<a href="mailto:security@ilom.tech">security@ilom.tech</a>
-</td>
-</tr>
-</table>
-
-### Security Features
-
-- 🔐 End-to-end encryption
-- 🛡️ Rate limiting & DDoS protection
-- 🔒 Secure session management
-- ✅ Input validation & sanitization
-- 🚫 Anti-spam & abuse prevention
-- 🔑 JWT authentication
-
-</div>
-
-<img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
-
-## ⚙️ Changelog
-
-<details>
-<summary><b>📜 View Full Changelog</b></summary>
-
-<br>
-
-### Version 1.0.0 (Current)
-
-**🎉 Initial Release**
-- ✨ 142+ commands across 9 categories
-- 🎨 Beautiful canvas graphics
-- 🤖 Multi-AI integration (GPT, Gemini)
-- 💰 Complete economy system
-- 👑 Advanced admin tools
-- 🎮 Interactive games
-- 📥 Social media downloaders
-- 🔧 Comprehensive utilities
-- 🛡️ Enterprise-grade security
-- 🌐 Multi-platform deployment
-
-</details>
 
 <img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
 
 ## 🎉 Thank You
 
 <div align="center">
-
-<img src="https://media.giphy.com/media/3o7abldj0b3rxrZUxW/giphy.gif" width="300" alt="Thank You">
 
 ### 🌟 Thank You for Using Amazing Bot! 🌟
 
@@ -1543,7 +1298,9 @@ Found a security issue? Please report it responsibly!
 <img src="https://img.shields.io/badge/Maintained-Yes-success?style=flat-square" alt="Maintained">
 <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square" alt="PRs Welcome">
 <img src="https://img.shields.io/badge/Built%20With-❤️-red?style=flat-square" alt="Built with Love">
-<img src="https://img.shields.io/badge/Made%20in-Nigeria-green?style=flat-square" alt="Made in Nigeria">
+<img src="https://img.shields.io/badge/Made%20in-Nigeria-008751?style=flat-square" alt="Made in Nigeria">
+<img src="https://img.shields.io/badge/Node.js-22+-339933?style=flat-square&logo=node.js" alt="Node.js">
+<img src="https://img.shields.io/badge/Baileys-v7-25D366?style=flat-square&logo=whatsapp" alt="Baileys">
 </p>
 
 <img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
@@ -1555,7 +1312,7 @@ Found a security issue? Please report it responsibly!
 </p>
 
 <p>
-<b>© 2024-2025 Amazing Bot. All Rights Reserved.</b>
+<b>© 2024-2026 Amazing Bot. All Rights Reserved.</b>
 </p>
 
 <img src="https://user-images.githubusercontent.com/73097560/115834477-dbab4500-a447-11eb-908a-139a6edaec5c.gif">
