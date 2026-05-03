@@ -37,35 +37,35 @@ const MAX_OUTPUT = 4000;
 
 function detectLanguage(code) {
     const firstLine = code.trim().split('\n')[0].toLowerCase();
-    
+
     if (firstLine.includes('#!/usr/bin/env node') || firstLine.includes('#!/usr/bin/node')) return 'javascript';
     if (firstLine.includes('#!/usr/bin/env python') || firstLine.includes('#!/usr/bin/python')) return 'python';
     if (firstLine.includes('#!/bin/bash') || firstLine.includes('#!/bin/sh')) return 'bash';
     if (firstLine.includes('#!/usr/bin/env ruby') || firstLine.includes('#!/usr/bin/ruby')) return 'ruby';
     if (firstLine.includes('#!/usr/bin/env php') || firstLine.includes('#!/usr/bin/php')) return 'php';
     if (firstLine.includes('#!/usr/bin/env perl') || firstLine.includes('#!/usr/bin/perl')) return 'perl';
-    
-    if (code.includes('console.log') || code.includes('require(') || code.includes('import ') && code.includes('from ') === false) return 'javascript';
-    if (code.includes('print(') || code.includes('def ') || code.includes('import ') && code.includes('from ')) return 'python';
+
+    if (code.includes('console.log') || code.includes('require(') || (code.includes('import ') && !code.includes('from '))) return 'javascript';
+    if (code.includes('print(') || code.includes('def ') || (code.includes('import ') && code.includes('from '))) return 'python';
     if (code.includes('echo ') || code.includes('#!/bin/bash')) return 'bash';
-    if (code.includes('puts ') || code.includes('def ') && code.includes('end')) return 'ruby';
+    if (code.includes('puts ') || (code.includes('def ') && code.includes('end'))) return 'ruby';
     if (code.includes('<?php')) return 'php';
     if (code.includes('package main') || code.includes('func main()')) return 'go';
     if (code.includes('fn main()') || code.includes('println!')) return 'rust';
-    if (code.includes('#include <stdio.h>') || code.includes('int main()') && !code.includes('std::')) return 'c';
+    if (code.includes('#include <stdio.h>') || (code.includes('int main()') && !code.includes('std::'))) return 'c';
     if (code.includes('#include <iostream>') || code.includes('std::')) return 'cpp';
     if (code.includes('public class') || code.includes('public static void main')) return 'java';
     if (code.includes('print(') && code.includes('local ')) return 'lua';
-    
+
     return null;
 }
 
 function truncateOutput(output, maxLength = MAX_OUTPUT) {
     if (output.length <= maxLength) return output;
     const half = Math.floor(maxLength / 2) - 100;
-    return output.substring(0, half) + 
-           `\n\n[${output.length - maxLength} characters truncated]\n\n` + 
-           output.substring(output.length - half);
+    return output.substring(0, half) +
+        `\n\n[${output.length - maxLength} characters truncated]\n\n` +
+        output.substring(output.length - half);
 }
 
 async function executeCode(code, language) {
@@ -87,7 +87,7 @@ async function executeCode(code, language) {
     }
 
     let command = `${langConfig.cmd} ${filePath}`;
-    
+
     if (language === 'rust' || language === 'rs') {
         command = `rustc ${filePath} -o /tmp/rust_exec_${Date.now()} && /tmp/rust_exec_${Date.now()}`;
     } else if (language === 'c') {
@@ -144,11 +144,12 @@ export default {
     hidden: false,
 
     async execute({ sock, message, args, from, prefix, sender }) {
-        if (!canUseSensitiveOwnerTools(sender)) {
+        if (!await canUseSensitiveOwnerTools(sender, sock)) {
             return await sock.sendMessage(from, {
-                text: '❌ Only the top owner and developers can use exec.'
+                text: '❌ Only the bot owner can use exec.'
             }, { quoted: message });
         }
+
         try {
             let language = null;
             let code = '';
@@ -164,7 +165,7 @@ export default {
             const quotedMsg = message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
             if (quotedMsg && !code) {
                 const quotedText = quotedMsg.conversation ||
-                                 quotedMsg.extendedTextMessage?.text || '';
+                    quotedMsg.extendedTextMessage?.text || '';
                 if (quotedText) {
                     code = quotedText;
                 }
@@ -202,7 +203,7 @@ export default {
             const executionTime = Date.now() - startTime;
 
             let responseText = `Language: ${language}\nTime: ${executionTime}ms\nStatus: ${result.success ? 'Success' : 'Failed'}\n\n`;
-            
+
             if (result.success) {
                 responseText += `Output:\n${truncateOutput(result.output.trim())}`;
             } else {
@@ -222,8 +223,6 @@ export default {
             });
 
         } catch (error) {
-            console.error('Exec command error:', error);
-            
             await sock.sendMessage(from, {
                 text: `Execution error: ${error.message || 'Unknown error'}`
             }, { quoted: message });
