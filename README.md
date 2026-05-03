@@ -1276,6 +1276,8 @@ See the [LICENSE](LICENSE) file for details
 
 <div align="center">
 
+<img src="https://media.giphy.com/media/3o7abldj0b3rxrZUxW/giphy.gif" width="300" alt="Thank You">
+
 ### 🌟 Thank You for Using Amazing Bot! 🌟
 
 <p>
