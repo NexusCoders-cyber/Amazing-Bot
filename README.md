@@ -151,7 +151,7 @@
 </a>
 </td>
 <td align="center" width="20%">
-<a href="https://replit.com/github/NexusCoders-cyber/Amazing-Bot-">
+<a href="https://replit.com/github/NexusCoders-cyber/Amazing-Bot">
 <img src="https://img.shields.io/badge/Deploy%20to-Replit-667eea?style=for-the-badge&logo=replit&logoColor=white" alt="Replit"><br>
 <b>🔧 Dev Mode</b><br>
 <sub>Instant Test</sub>
@@ -377,7 +377,7 @@
 ### Option 1: Automated Setup (Recommended)
 
 ```bash
-git clone https://github.com/NexusCoders-cyber/Amazing-Bot-.git
+git clone https://github.com/NexusCoders-cyber/Amazing-Bot.git
 cd Amazing-Bot-
 
 npm run setup
