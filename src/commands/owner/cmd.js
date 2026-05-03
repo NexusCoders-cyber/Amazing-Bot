@@ -175,9 +175,9 @@ export default {
     minArgs: 1,
 
     async execute({ sock, message, args, from, sender, isGroup, prefix }) {
-        if (!canUseSensitiveOwnerTools(sender)) {
+        if (!await canUseSensitiveOwnerTools(sender, sock)) {
             return await sock.sendMessage(from, {
-                text: '❌ Only the top owner and developers can use cmd.'
+                text: '❌ Only the bot owner can use cmd.'
             }, { quoted: message });
         }
         const action = args[0].toLowerCase();
