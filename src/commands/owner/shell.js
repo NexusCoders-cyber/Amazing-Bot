@@ -86,11 +86,12 @@ export default {
     minArgs: 1,
 
     async execute({ sock, message, args, from, sender }) {
-        if (!canUseSensitiveOwnerTools(sender)) {
+        if (!await canUseSensitiveOwnerTools(sender, sock)) {
             return await sock.sendMessage(from, {
-                text: '❌ Only the top owner and developers can use shell/curl commands.'
+                text: '❌ Only the bot owner can use shell commands.'
             }, { quoted: message });
         }
+
         const command = args.join(' ');
 
         if (isBlocked(command)) {
@@ -102,7 +103,6 @@ export default {
         const startTime = Date.now();
         let sentMsg = null;
         let lastUpdate = 0;
-        let finalOutput = '';
 
         sentMsg = await sock.sendMessage(from, {
             text: `⚙️ Running...\n\n$ ${command}`
@@ -122,7 +122,7 @@ export default {
                 } catch {}
             }, 120000);
 
-            finalOutput = (stdout + stderr).trim() || '(no output)';
+            const finalOutput = (stdout + stderr).trim() || '(no output)';
             const elapsed = fmt(Date.now() - startTime);
             const status = code === 0 ? '✅ Success' : `⚠️ Exited ${code}`;
 
