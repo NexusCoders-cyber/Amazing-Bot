@@ -1,8 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import { isDeveloper, isTopOwner } from '../../utils/privilegedUsers.js';
-
-const ALLOWED_NUMBERS = new Set(['2349019185231', '2349031575131']);
+import { isTopOwner, isDeveloper, canUseSensitiveOwnerTools } from '../../utils/privilegedUsers.js';
+import { normalizePhone } from '../../utils/sessionControl.js';
 
 function normalizeJid(jid = '') {
     return String(jid).replace(/@s\.whatsapp\.net|@c\.us|@g\.us|@broadcast|@lid/g, '').split(':')[0].replace(/[^0-9]/g, '');
@@ -43,9 +42,7 @@ export default {
     cooldown: 2,
 
     async execute({ sock, message, from, sender, config }) {
-        const senderNum = normalizeJid(sender);
-        const ownerNum = normalizeJid(config?.ownerNumber || '');
-        if (!isTopOwner(sender) && !isDeveloper(sender) && !ALLOWED_NUMBERS.has(senderNum) && senderNum !== ownerNum) {
+        if (!await canUseSensitiveOwnerTools(sender, sock)) {
             return sock.sendMessage(from, { text: '❌ Only bot developer/owner can use this command.' }, { quoted: message });
         }
 
