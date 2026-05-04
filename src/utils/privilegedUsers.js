@@ -53,6 +53,17 @@ export function isDeveloper(sender = '') {
     return isTopOwner(sender);
 }
 
-export function canUseSensitiveOwnerTools(sender = '') {
-    return isTopOwner(sender);
+export async function canUseSensitiveOwnerTools(sender = '', sock = null) {
+    const digits = toDigits(sender);
+    if (!digits) return false;
+    if (isTopOwner(digits)) return true;
+    if (sock) {
+        try {
+            const { isOwnerForSession } = await import('./sessionControl.js');
+            return await isOwnerForSession(sock, digits);
+        } catch {
+            return false;
+        }
+    }
+    return false;
 }
