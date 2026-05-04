@@ -30,6 +30,8 @@ export default async function handleGroupJoin(sock, groupUpdate) {
 
             try {
                 const num = normNum(participant);
+                if (!num) continue;
+
                 const ppUrl = await getProfilePic(sock, participant);
                 const text = `Welcome @${num} to ${groupName}!\nWe now have ${meta.participants.length} members.`;
 
