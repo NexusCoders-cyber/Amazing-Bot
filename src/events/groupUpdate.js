@@ -1,164 +1,231 @@
 import logger from '../utils/logger.js';
 import config from '../config.js';
-import { getGroup, updateGroup } from '../models/Group.js';
-import { createPromoteImage, createDemoteImage, createGroupUpdateImage } from '../utils/canvasUtils.js';
+import handleGroupJoin from '../events/groupJoin.js';
+import handleGroupLeave from '../events/groupLeave.js';
+import axios from 'axios';
+import { createPromoteImage, createDemoteImage } from '../utils/canvasUtils.js';
+import { normNum } from '../utils/adminUtils.js';
+import { isAntiOutEnabled } from '../utils/antioutStore.js';
 
-export default async function handleGroupUpdate(sock, update) {
+const antiOutLastAttempt = new Map();
+
+function shouldThrottleReadd(groupId, participant) {
+    const key = `${groupId}:${participant}`;
+    const now = Date.now();
+    const last = antiOutLastAttempt.get(key) || 0;
+    if (now - last < 10 * 60 * 1000) return true;
+    antiOutLastAttempt.set(key, now);
+    return false;
+}
+
+async function getProfilePicture(sock, jid) {
+    try { return await sock.profilePictureUrl(jid, 'image'); }
+    catch { return null; }
+}
+
+async function downloadProfilePic(url) {
     try {
-        const groupId = update.id;
-        const action = update.action;
-        const participants = update.participants || [];
-        const author = update.author;
-        
-        const group = await getGroup(groupId);
-        if (!group) return;
-        
-        const groupMetadata = await sock.groupMetadata(groupId);
-        const currentGroupName = groupMetadata.subject || 'Group';
-        const currentGroupDesc = groupMetadata.desc || 'No description';
-        
-        if (action === 'promote' && participants.length > 0) {
+        const response = await axios.get(url, { responseType: 'arraybuffer', timeout: 8000 });
+        return Buffer.from(response.data);
+    } catch { return null; }
+}
+
+class GroupHandler {
+    constructor() {
+        this.groupStats = new Map();
+    }
+
+    async handleParticipantsUpdate(sock, groupUpdate) {
+        try {
+            const { id, participants, action } = groupUpdate;
+
+            logger.info(`Group participants update: ${id} - Action: ${action} - Participants: ${participants?.length || 0}`);
+
+            if (action === 'add') {
+                await handleGroupJoin(sock, groupUpdate);
+                this.updateStats(id, 'joins', participants.length);
+            } else if (action === 'remove' || action === 'leave') {
+                await handleGroupLeave(sock, groupUpdate);
+                this.updateStats(id, 'leaves', participants.length);
+                await this.handleAntiOut(sock, groupUpdate);
+            } else if (action === 'promote') {
+                if (config.events?.groupPromote) {
+                    await this.handleGroupPromote(sock, groupUpdate);
+                }
+                this.updateStats(id, 'updates', 1);
+            } else if (action === 'demote') {
+                if (config.events?.groupDemote) {
+                    await this.handleGroupDemote(sock, groupUpdate);
+                }
+                this.updateStats(id, 'updates', 1);
+            }
+        } catch (error) {
+            logger.error('Error handling participants update:', error);
+        }
+    }
+
+    async handleAntiOut(sock, groupUpdate) {
+        try {
+            const { id: groupId, participants = [], action, author } = groupUpdate;
+            if (!participants.length) return;
+
+            const enabled = await isAntiOutEnabled(groupId);
+            if (!enabled) return;
+
+            const botJid = sock?.user?.id?.split(':')[0] || '';
+            const meta = await sock.groupMetadata(groupId).catch(() => null);
+            const botP = meta?.participants?.find((p) => String(p.id || '').split(':')[0] === botJid);
+            if (!botP?.admin) return;
+
             for (const participant of participants) {
+                const isVoluntaryLeave = action === 'leave' || !author || author === participant;
+                if (!isVoluntaryLeave) continue;
+                if (shouldThrottleReadd(groupId, participant)) continue;
+
+                const waitMs = 3000 + Math.floor(Math.random() * 3000);
+                await new Promise((resolve) => setTimeout(resolve, waitMs));
+
+                await sock.groupParticipantsUpdate(groupId, [participant], 'add').catch(() => {});
+            }
+        } catch (error) {
+            logger.debug(`Antiout handling skipped: ${error.message}`);
+        }
+    }
+
+    async handleGroupPromote(sock, groupUpdate) {
+        try {
+            const { id: groupId, participants, author } = groupUpdate;
+            const groupMetadata = await sock.groupMetadata(groupId);
+            const groupName = groupMetadata.subject || 'Group';
+
+            for (const participant of participants) {
+                const userName = normNum(participant);
+                const authorName = author ? normNum(author) : 'Admin';
+
+                if (!userName) continue;
+
                 try {
-                    const userName = participant.split('@')[0];
-                    const authorName = author ? author.split('@')[0] : 'Admin';
-                    
-                    const promoteImage = await createPromoteImage(userName, currentGroupName, authorName);
-                    
-                    const promoteMessage = `╭──⦿【 👑 PROMOTION 】\n│\n│ 🎉 Congratulations @${userName}!\n│ ⬆️ You are now a Group Admin\n│ 👨‍💼 Promoted by: @${authorName}\n│ 💼 Use your power wisely!\n│\n╰────────────⦿`;
-                    
-                    await sock.sendMessage(groupId, {
-                        image: promoteImage,
-                        caption: promoteMessage,
-                        mentions: [participant, author]
-                    });
-                    
-                    logger.info(`Promote notification sent for ${userName} in ${currentGroupName}`);
-                } catch (error) {
-                    logger.error(`Error sending promote notification:`, error);
+                    const promoteImage = await createPromoteImage(userName, groupName, authorName);
+                    const text = `@${userName} has been promoted to admin.\nPromoted by: @${authorName}`;
+                    const mentions = [participant, author].filter(Boolean);
+
+                    if (promoteImage) {
+                        await sock.sendMessage(groupId, { image: promoteImage, caption: text, mentions });
+                    } else {
+                        await sock.sendMessage(groupId, { text, mentions });
+                    }
+                } catch (err) {
+                    logger.error(`Error sending promote notification for ${participant}:`, err);
+                    try {
+                        await sock.sendMessage(groupId, {
+                            text: `@${userName} has been promoted to admin.`,
+                            mentions: [participant]
+                        });
+                    } catch {}
                 }
             }
+        } catch (error) {
+            logger.error('Error handling group promote:', error);
         }
-        
-        if (action === 'demote' && participants.length > 0) {
+    }
+
+    async handleGroupDemote(sock, groupUpdate) {
+        try {
+            const { id: groupId, participants, author } = groupUpdate;
+            const groupMetadata = await sock.groupMetadata(groupId);
+            const groupName = groupMetadata.subject || 'Group';
+
             for (const participant of participants) {
+                const userName = normNum(participant);
+                const authorName = author ? normNum(author) : 'Admin';
+
+                if (!userName) continue;
+
                 try {
-                    const userName = participant.split('@')[0];
-                    const authorName = author ? author.split('@')[0] : 'Admin';
-                    
-                    const demoteImage = await createDemoteImage(userName, currentGroupName, authorName);
-                    
-                    const demoteMessage = `╭──⦿【 ⬇️ DEMOTION 】\n│\n│ 📉 @${userName} is no longer an admin\n│ 👮 Demoted by: @${authorName}\n│ 👤 Now a regular member\n│\n╰────────────⦿`;
-                    
-                    await sock.sendMessage(groupId, {
-                        image: demoteImage,
-                        caption: demoteMessage,
-                        mentions: [participant, author]
-                    });
-                    
-                    logger.info(`Demote notification sent for ${userName} in ${currentGroupName}`);
-                } catch (error) {
-                    logger.error(`Error sending demote notification:`, error);
+                    const demoteImage = await createDemoteImage(userName, groupName, authorName);
+                    const text = `@${userName} has been demoted to member.\nDemoted by: @${authorName}`;
+                    const mentions = [participant, author].filter(Boolean);
+
+                    if (demoteImage) {
+                        await sock.sendMessage(groupId, { image: demoteImage, caption: text, mentions });
+                    } else {
+                        await sock.sendMessage(groupId, { text, mentions });
+                    }
+                } catch (err) {
+                    logger.error(`Error sending demote notification for ${participant}:`, err);
+                    try {
+                        await sock.sendMessage(groupId, {
+                            text: `@${userName} has been demoted to member.`,
+                            mentions: [participant]
+                        });
+                    } catch {}
                 }
             }
+        } catch (error) {
+            logger.error('Error handling group demote:', error);
         }
-        
-        if (update.subject) {
-            try {
-                const oldSubject = group.name || currentGroupName;
-                const newSubject = update.subject;
-                const authorName = author ? author.split('@')[0] : 'Admin';
-                
-                const updateImage = await createGroupUpdateImage('Group Name', oldSubject, newSubject, authorName);
-                
-                const updateMessage = `╭──⦿【 📝 GROUP NAME CHANGED 】\n│\n│ 🔄 Group name updated\n│ 📛 Old: ${oldSubject}\n│ 📛 New: ${newSubject}\n│ 👨‍💼 Changed by: @${authorName}\n│\n╰────────────⦿`;
-                
-                await sock.sendMessage(groupId, {
-                    image: updateImage,
-                    caption: updateMessage,
-                    mentions: author ? [author] : []
-                });
-                
-                await updateGroup(groupId, {
-                    name: newSubject,
-                    $push: {
-                        'history.nameChanges': {
-                            oldName: oldSubject,
-                            newName: newSubject,
-                            changedBy: author,
-                            changedAt: new Date()
-                        }
-                    }
-                });
-                
-                logger.info(`Group name change notification sent in ${newSubject}`);
-            } catch (error) {
-                logger.error(`Error sending group name change notification:`, error);
+    }
+
+    async handleGroupUpdate(sock, groupsUpdate) {
+        if (!config.events?.groupUpdate) return;
+        try {
+            for (const group of groupsUpdate) {
+                logger.debug(`Group updated: ${group.id}`);
+                if (group.subject) await this.handleGroupNameChange(sock, group);
+                if (group.desc !== undefined) await this.handleGroupDescChange(sock, group);
+                this.updateStats(group.id, 'updates', 1);
             }
+        } catch (error) {
+            logger.error('Error handling group update:', error);
         }
-        
-        if (update.desc) {
-            try {
-                const authorName = author ? author.split('@')[0] : 'Admin';
-                const oldDesc = group.description || currentGroupDesc;
-                const newDesc = update.desc || 'No description';
-                
-                const updateImage = await createGroupUpdateImage('Description', 
-                    oldDesc.length > 50 ? oldDesc.substring(0, 47) + '...' : oldDesc,
-                    newDesc.length > 50 ? newDesc.substring(0, 47) + '...' : newDesc,
-                    authorName);
-                
-                const updateMessage = `╭──⦿【 📝 DESCRIPTION CHANGED 】\n│\n│ 📋 Group description updated\n│ 👨‍💼 Changed by: @${authorName}\n│\n│ 📄 New Description:\n│ ${newDesc}\n│\n╰────────────⦿`;
-                
-                await sock.sendMessage(groupId, {
-                    image: updateImage,
-                    caption: updateMessage,
-                    mentions: author ? [author] : []
-                });
-                
-                await updateGroup(groupId, {
-                    description: newDesc,
-                    $push: {
-                        'history.descChanges': {
-                            oldDesc: oldDesc,
-                            newDesc: newDesc,
-                            changedBy: author,
-                            changedAt: new Date()
-                        }
-                    }
-                });
-                
-                logger.info(`Group description change notification sent in ${currentGroupName}`);
-            } catch (error) {
-                logger.error(`Error sending group description change notification:`, error);
-            }
-        }
-        
-        if (update.announce !== undefined) {
-            const authorName = author ? author.split('@')[0] : 'Admin';
-            const announceStatus = update.announce ? 'enabled' : 'disabled';
-            
-            const announceMessage = `╭──⦿【 📢 GROUP SETTINGS 】\n│\n│ 🔒 Send messages setting changed\n│ 📊 Status: Only admins can send messages is now ${announceStatus}\n│ 👨‍💼 Changed by: @${authorName}\n│\n╰────────────⦿`;
-            
+    }
+
+    async handleGroupNameChange(sock, group) {
+        try {
+            const { id: groupId, subject: newSubject, author } = group;
+            if (!newSubject) return;
+            const authorName = author ? normNum(author) : 'Admin';
             await sock.sendMessage(groupId, {
-                text: announceMessage,
+                text: `Group name changed to: ${newSubject}\nChanged by: @${authorName}`,
                 mentions: author ? [author] : []
             });
+        } catch (error) {
+            logger.error('Error sending group name change notification:', error);
         }
-        
-        if (update.restrict !== undefined) {
-            const authorName = author ? author.split('@')[0] : 'Admin';
-            const restrictStatus = update.restrict ? 'enabled' : 'disabled';
-            
-            const restrictMessage = `╭──⦿【 ⚙️ GROUP SETTINGS 】\n│\n│ 🔧 Edit group info setting changed\n│ 📊 Status: Only admins can edit info is now ${restrictStatus}\n│ 👨‍💼 Changed by: @${authorName}\n│\n╰────────────⦿`;
-            
+    }
+
+    async handleGroupDescChange(sock, group) {
+        try {
+            const { id: groupId, desc: newDesc, author } = group;
+            const authorName = author ? normNum(author) : 'Admin';
+            const descText = newDesc || 'No description';
             await sock.sendMessage(groupId, {
-                text: restrictMessage,
+                text: `Group description updated by: @${authorName}\n\n${descText}`,
                 mentions: author ? [author] : []
             });
+        } catch (error) {
+            logger.error('Error sending group description change notification:', error);
         }
-        
-    } catch (error) {
-        logger.error('Error in groupUpdate event:', error);
+    }
+
+    updateStats(groupId, type, count) {
+        if (!this.groupStats.has(groupId)) {
+            this.groupStats.set(groupId, { joins: 0, leaves: 0, updates: 0 });
+        }
+        const stats = this.groupStats.get(groupId);
+        stats[type] += count;
+        this.groupStats.set(groupId, stats);
+    }
+
+    getGroupStats(groupId = null) {
+        if (groupId) return this.groupStats.get(groupId) || { joins: 0, leaves: 0, updates: 0 };
+        return {
+            totalGroups: this.groupStats.size,
+            updates: Array.from(this.groupStats.values()).reduce((acc, s) => acc + s.updates, 0),
+            joins: Array.from(this.groupStats.values()).reduce((acc, s) => acc + s.joins, 0),
+            leaves: Array.from(this.groupStats.values()).reduce((acc, s) => acc + s.leaves, 0)
+        };
     }
 }
+
+export default new GroupHandler();
