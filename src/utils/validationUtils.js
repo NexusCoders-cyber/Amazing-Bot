@@ -1,5 +1,5 @@
-const validator = require('validator');
-const logger = require('./logger');
+import validator from 'validator';
+import logger from './logger.js';
 
 class ValidationUtils {
     constructor() {
@@ -7,10 +7,9 @@ class ValidationUtils {
             phone: /^\+?[1-9]\d{1,14}$/,
             whatsappJid: /^\d{10,15}@s\.whatsapp\.net$/,
             groupJid: /^\d{17,18}-\d{10}@g\.us$/,
-            url: /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/,
+            url: /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)$/,
             email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
             ipv4: /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/,
-            ipv6: /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]+|::(ffff(:0{1,4})?:)?((25[0-5]|(2[0-4]|1?[0-9])?[0-9])\.){3}(25[0-5]|(2[0-4]|1?[0-9])?[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1?[0-9])?[0-9])\.){3}(25[0-5]|(2[0-4]|1?[0-9])?[0-9]))$/,
             hex: /^[0-9a-fA-F]+$/,
             base64: /^[A-Za-z0-9+/]*={0,2}$/,
             uuid: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
@@ -21,13 +20,10 @@ class ValidationUtils {
             password: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
             hashtag: /^#[a-zA-Z0-9_]+$/,
             mention: /^@[a-zA-Z0-9_]+$/,
-            creditCard: /^\d{4}\s?\d{4}\s?\d{4}\s?\d{4}$/,
-            ssn: /^\d{3}-\d{2}-\d{4}$/,
-            zipCode: /^\d{5}(-\d{4})?$/,
             mongoId: /^[0-9a-fA-F]{24}$/,
             jwt: /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_.+/]*$/
         };
-        
+
         this.limits = {
             string: { min: 0, max: 10000 },
             username: { min: 3, max: 20 },
@@ -236,8 +232,8 @@ class ValidationUtils {
         const result = {};
         const errors = [];
 
-        for (const [key, validator] of Object.entries(schema)) {
-            const fieldResult = validator(value[key]);
+        for (const [key, validatorFn] of Object.entries(schema)) {
+            const fieldResult = validatorFn(value[key]);
             if (!fieldResult.valid) {
                 errors.push(`${key}: ${fieldResult.error}`);
             } else {
@@ -341,7 +337,7 @@ class ValidationUtils {
         if (validation.value) {
             const isUser = this.patterns.whatsappJid.test(validation.value);
             const isGroup = this.patterns.groupJid.test(validation.value);
-            
+
             if (!isUser && !isGroup) {
                 return { valid: false, error: 'Invalid WhatsApp JID format' };
             }
@@ -613,7 +609,7 @@ class ValidationUtils {
 
         for (const [field, result] of Object.entries(results)) {
             summary.validatedFields++;
-            
+
             if (!result.valid) {
                 summary.valid = false;
                 summary.invalidFields++;
@@ -625,27 +621,26 @@ class ValidationUtils {
     }
 }
 
-const validationUtils = new ValidationUtils();
+export const validationUtils = new ValidationUtils();
 
-module.exports = {
-    validationUtils,
-    validateString: (value, options) => validationUtils.validateString(value, options),
-    validateNumber: (value, options) => validationUtils.validateNumber(value, options),
-    validateBoolean: (value, options) => validationUtils.validateBoolean(value, options),
-    validateArray: (value, options) => validationUtils.validateArray(value, options),
-    validateObject: (value, schema, options) => validationUtils.validateObject(value, schema, options),
-    validateEmail: (email, options) => validationUtils.validateEmail(email, options),
-    validatePhone: (phone, options) => validationUtils.validatePhone(phone, options),
-    validateURL: (url, options) => validationUtils.validateURL(url, options),
-    validateWhatsAppJid: (jid, options) => validationUtils.validateWhatsAppJid(jid, options),
-    validateUsername: (username, options) => validationUtils.validateUsername(username, options),
-    validatePassword: (password, options) => validationUtils.validatePassword(password, options),
-    validateAmount: (amount, options) => validationUtils.validateAmount(amount, options),
-    validateDate: (date, options) => validationUtils.validateDate(date, options),
-    validateFile: (file, options) => validationUtils.validateFile(file, options),
-    sanitizeInput: (input, options) => validationUtils.sanitizeInput(input, options),
-    validateCommandInput: (command, args, options) => validationUtils.validateCommandInput(command, args, options),
-    isValidPattern: (value, pattern) => validationUtils.isValidPattern(value, pattern),
-    addCustomPattern: (name, pattern) => validationUtils.addCustomPattern(name, pattern),
-    createValidator: (schema) => validationUtils.createValidator(schema)
-};
+export const validateString = (value, options) => validationUtils.validateString(value, options);
+export const validateNumber = (value, options) => validationUtils.validateNumber(value, options);
+export const validateBoolean = (value, options) => validationUtils.validateBoolean(value, options);
+export const validateArray = (value, options) => validationUtils.validateArray(value, options);
+export const validateObject = (value, schema, options) => validationUtils.validateObject(value, schema, options);
+export const validateEmail = (email, options) => validationUtils.validateEmail(email, options);
+export const validatePhone = (phone, options) => validationUtils.validatePhone(phone, options);
+export const validateURL = (url, options) => validationUtils.validateURL(url, options);
+export const validateWhatsAppJid = (jid, options) => validationUtils.validateWhatsAppJid(jid, options);
+export const validateUsername = (username, options) => validationUtils.validateUsername(username, options);
+export const validatePassword = (password, options) => validationUtils.validatePassword(password, options);
+export const validateAmount = (amount, options) => validationUtils.validateAmount(amount, options);
+export const validateDate = (date, options) => validationUtils.validateDate(date, options);
+export const validateFile = (file, options) => validationUtils.validateFile(file, options);
+export const sanitizeInput = (input, options) => validationUtils.sanitizeInput(input, options);
+export const validateCommandInput = (command, args, options) => validationUtils.validateCommandInput(command, args, options);
+export const isValidPattern = (value, pattern) => validationUtils.isValidPattern(value, pattern);
+export const addCustomPattern = (name, pattern) => validationUtils.addCustomPattern(name, pattern);
+export const createValidator = (schema) => validationUtils.createValidator(schema);
+
+export default validationUtils;
