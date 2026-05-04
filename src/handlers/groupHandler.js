@@ -102,17 +102,15 @@ class GroupHandler {
                 const userName = normNum(participant);
                 const authorName = author ? normNum(author) : 'Admin';
 
-                try {
-                    const profilePicUrl = await getProfilePicture(sock, participant);
-                    const profilePicBuffer = profilePicUrl ? await downloadProfilePic(profilePicUrl) : null;
-                    const promoteImage = await createPromoteImage(userName, groupName, authorName);
+                if (!userName) continue;
 
+                try {
+                    const promoteImage = await createPromoteImage(userName, groupName, authorName);
                     const text = `@${userName} has been promoted to admin.\nPromoted by: @${authorName}`;
                     const mentions = [participant, author].filter(Boolean);
 
-                    const image = profilePicBuffer || promoteImage;
-                    if (image) {
-                        await sock.sendMessage(groupId, { image, caption: text, mentions });
+                    if (promoteImage) {
+                        await sock.sendMessage(groupId, { image: promoteImage, caption: text, mentions });
                     } else {
                         await sock.sendMessage(groupId, { text, mentions });
                     }
@@ -141,17 +139,15 @@ class GroupHandler {
                 const userName = normNum(participant);
                 const authorName = author ? normNum(author) : 'Admin';
 
-                try {
-                    const profilePicUrl = await getProfilePicture(sock, participant);
-                    const profilePicBuffer = profilePicUrl ? await downloadProfilePic(profilePicUrl) : null;
-                    const demoteImage = await createDemoteImage(userName, groupName, authorName);
+                if (!userName) continue;
 
+                try {
+                    const demoteImage = await createDemoteImage(userName, groupName, authorName);
                     const text = `@${userName} has been demoted to member.\nDemoted by: @${authorName}`;
                     const mentions = [participant, author].filter(Boolean);
 
-                    const image = profilePicBuffer || demoteImage;
-                    if (image) {
-                        await sock.sendMessage(groupId, { image, caption: text, mentions });
+                    if (demoteImage) {
+                        await sock.sendMessage(groupId, { image: demoteImage, caption: text, mentions });
                     } else {
                         await sock.sendMessage(groupId, { text, mentions });
                     }
@@ -187,6 +183,7 @@ class GroupHandler {
     async handleGroupNameChange(sock, group) {
         try {
             const { id: groupId, subject: newSubject, author } = group;
+            if (!newSubject) return;
             const authorName = author ? normNum(author) : 'Admin';
             await sock.sendMessage(groupId, {
                 text: `Group name changed to: ${newSubject}\nChanged by: @${authorName}`,
@@ -201,8 +198,9 @@ class GroupHandler {
         try {
             const { id: groupId, desc: newDesc, author } = group;
             const authorName = author ? normNum(author) : 'Admin';
+            const descText = newDesc || 'No description';
             await sock.sendMessage(groupId, {
-                text: `Group description updated by: @${authorName}\n\n${newDesc || 'No description'}`,
+                text: `Group description updated by: @${authorName}\n\n${descText}`,
                 mentions: author ? [author] : []
             });
         } catch (error) {
