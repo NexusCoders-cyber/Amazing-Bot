@@ -18,6 +18,8 @@ export default async function handleGroupLeave(sock, groupUpdate) {
         for (const participant of participants) {
             try {
                 const num = normNum(participant);
+                if (!num) continue;
+
                 const ppUrl = await getProfilePic(sock, participant);
                 const text = `@${num} has left ${groupName}.\nWe now have ${meta.participants.length} members.`;
 
