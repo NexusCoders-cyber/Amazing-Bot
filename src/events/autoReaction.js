@@ -1,6 +1,5 @@
 import logger from '../utils/logger.js';
 import config from '../config.js';
-import { getUser, updateUser } from '../models/User.js';
 
 const autoReactKeywords = {
     '❤️': ['love', 'heart', 'cute', 'beautiful', 'amazing'],
@@ -27,86 +26,50 @@ const autoReactKeywords = {
 
 export default async function handleAutoReaction(sock, message) {
     try {
-        const messageText = message.message?.conversation || 
-                           message.message?.extendedTextMessage?.text || '';
-        
-        if (!messageText) return;
-        
+        if (!config.events?.autoReaction) return;
+
+        const messageText = message.message?.conversation
+            || message.message?.extendedTextMessage?.text
+            || '';
+
+        if (!messageText || messageText.trim().length === 0) return;
+
         const from = message.key.remoteJid;
-        const sender = message.key.participant || from;
-        const isGroup = from.endsWith('@g.us');
-        
+        if (!from || from === 'status@broadcast') return;
+
+        const messageKey = message.key;
+        if (!messageKey?.id) return;
+
         const lowerText = messageText.toLowerCase();
-        
+
         for (const [emoji, keywords] of Object.entries(autoReactKeywords)) {
+            let matched = false;
             for (const keyword of keywords) {
                 if (lowerText.includes(keyword)) {
-                    try {
-                        const reactionMessage = {
-                            react: {
-                                text: emoji,
-                                key: message.key
-                            }
-                        };
-                        
-                        await sock.sendMessage(from, reactionMessage);
-                        logger.debug(`Auto-reacted with ${emoji} to message containing "${keyword}"`);
-                        
-                        await updateUser(sender, {
-                            $inc: { 'stats.reactionsReceived': 1 }
-                        });
-                        
-                        return;
-                    } catch (error) {
-                        logger.error('Error sending auto-reaction:', error);
-                    }
+                    matched = true;
+                    break;
                 }
             }
-        }
-        
-        if (messageText.length > 500 && !isGroup) {
-            try {
-                await sock.sendMessage(from, {
-                    react: {
-                        text: '📝',
-                        key: message.key
-                    }
-                });
-            } catch (error) {
-                logger.error('Error sending long message reaction:', error);
+            if (matched) {
+                try {
+                    await sock.sendMessage(from, {
+                        react: { text: emoji, key: messageKey }
+                    });
+                } catch (error) {
+                    logger.debug(`Auto-reaction failed: ${error.message}`);
+                }
+                return;
             }
         }
-        
-        const hasMedia = message.message?.imageMessage || 
-                        message.message?.videoMessage || 
-                        message.message?.documentMessage;
-        
-        if (hasMedia) {
+
+        if (message.message?.imageMessage || message.message?.videoMessage || message.message?.documentMessage) {
             try {
                 await sock.sendMessage(from, {
-                    react: {
-                        text: '📎',
-                        key: message.key
-                    }
+                    react: { text: '📎', key: messageKey }
                 });
-            } catch (error) {
-                logger.error('Error sending media reaction:', error);
-            }
+            } catch {}
         }
-        
-        if (lowerText.includes(config.botName.toLowerCase())) {
-            try {
-                await sock.sendMessage(from, {
-                    react: {
-                        text: '🤖',
-                        key: message.key
-                    }
-                });
-            } catch (error) {
-                logger.error('Error sending bot mention reaction:', error);
-            }
-        }
-        
+
     } catch (error) {
         logger.error('Error in autoReaction event:', error);
     }
