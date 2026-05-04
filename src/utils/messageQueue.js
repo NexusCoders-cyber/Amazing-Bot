@@ -1,6 +1,6 @@
-const EventEmitter = require('events');
-const logger = require('./logger');
-const { cache } = require('./cache');
+import { EventEmitter } from 'events';
+import logger from './logger.js';
+import { cache } from './cache.js';
 
 class MessageQueue extends EventEmitter {
     constructor() {
@@ -48,7 +48,7 @@ class MessageQueue extends EventEmitter {
 
             const queue = this.queues.get(queueName);
             queue.push(queueMessage);
-            
+
             queue.sort((a, b) => {
                 if (a.priority !== b.priority) {
                     return b.priority - a.priority;
@@ -58,9 +58,9 @@ class MessageQueue extends EventEmitter {
 
             this.stats.queued++;
             this.emit('message:queued', { queueName, messageId: id, queueSize: queue.length });
-            
+
             this.processQueue(queueName);
-            
+
             return id;
         } catch (error) {
             logger.error('Failed to add message to queue:', error);
@@ -73,13 +73,13 @@ class MessageQueue extends EventEmitter {
 
         const queue = this.queues.get(queueName);
         const processing = this.processing.get(queueName);
-        
+
         if (processing.size >= this.maxConcurrent) {
             return;
         }
 
         const now = Date.now();
-        const readyMessages = queue.filter(msg => 
+        const readyMessages = queue.filter(msg =>
             msg.scheduledFor <= now && !processing.has(msg.id)
         );
 
@@ -92,15 +92,15 @@ class MessageQueue extends EventEmitter {
     async processMessage(queueName, message) {
         try {
             message.attempts++;
-            
-            this.emit('message:processing', { 
-                queueName, 
-                messageId: message.id, 
-                attempt: message.attempts 
+
+            this.emit('message:processing', {
+                queueName,
+                messageId: message.id,
+                attempt: message.attempts
             });
 
             const result = await this.executeMessage(queueName, message);
-            
+
             if (result.success) {
                 await this.handleSuccess(queueName, message, result);
             } else {
@@ -134,12 +134,12 @@ class MessageQueue extends EventEmitter {
     async handleSuccess(queueName, message, result) {
         const queue = this.queues.get(queueName);
         const processing = this.processing.get(queueName);
-        
+
         const index = queue.findIndex(m => m.id === message.id);
         if (index > -1) {
             queue.splice(index, 1);
         }
-        
+
         processing.delete(message.id);
         this.stats.processed++;
 
@@ -152,19 +152,19 @@ class MessageQueue extends EventEmitter {
         });
 
         logger.debug(`Message ${message.id} processed successfully in queue ${queueName}`);
-        
+
         setImmediate(() => this.processQueue(queueName));
     }
 
     async handleFailure(queueName, message, error) {
         const queue = this.queues.get(queueName);
         const processing = this.processing.get(queueName);
-        
+
         processing.delete(message.id);
 
         if (message.attempts < message.maxRetries) {
             message.scheduledFor = Date.now() + (message.delay * Math.pow(2, message.attempts - 1));
-            
+
             queue.sort((a, b) => {
                 if (a.priority !== b.priority) {
                     return b.priority - a.priority;
@@ -173,7 +173,7 @@ class MessageQueue extends EventEmitter {
             });
 
             this.stats.retried++;
-            
+
             this.emit('message:retry', {
                 queueName,
                 messageId: message.id,
@@ -190,11 +190,11 @@ class MessageQueue extends EventEmitter {
             }
 
             this.stats.failed++;
-            
+
             this.emit('message:failed', {
                 queueName,
                 messageId: message.id,
-                error: error.message || error,
+                error: error?.message || error,
                 attempts: message.attempts
             });
 
@@ -223,11 +223,11 @@ class MessageQueue extends EventEmitter {
             const queue = this.queues.get(queueName);
             const count = queue.length;
             queue.length = 0;
-            
+
             this.emit('queue:cleared', { queueName, messagesCleared: count });
             return count;
         }
-        
+
         return 0;
     }
 
@@ -247,7 +247,7 @@ class MessageQueue extends EventEmitter {
     getQueueStatus(queueName) {
         const queue = this.queues.get(queueName) || [];
         const processing = this.processing.get(queueName) || new Set();
-        
+
         return {
             name: queueName,
             pending: queue.length,
@@ -259,11 +259,11 @@ class MessageQueue extends EventEmitter {
 
     getAllQueues() {
         const queues = [];
-        
+
         for (const queueName of this.queues.keys()) {
             queues.push(this.getQueueStatus(queueName));
         }
-        
+
         return queues;
     }
 
@@ -271,7 +271,7 @@ class MessageQueue extends EventEmitter {
         const queueStats = this.getAllQueues();
         const totalPending = queueStats.reduce((sum, q) => sum + q.pending, 0);
         const totalProcessing = queueStats.reduce((sum, q) => sum + q.processing, 0);
-        
+
         return {
             ...this.stats,
             totalPending,
@@ -283,7 +283,7 @@ class MessageQueue extends EventEmitter {
 
     async scheduleMessage(queueName, message, scheduleTime, options = {}) {
         const delay = scheduleTime - Date.now();
-        
+
         if (delay <= 0) {
             return this.addMessage(queueName, message, options);
         }
@@ -324,22 +324,22 @@ class MessageQueue extends EventEmitter {
 
     async bulkAdd(queueName, messages, options = {}) {
         const messageIds = [];
-        
+
         for (const message of messages) {
             const id = this.addMessage(queueName, message, options);
             messageIds.push(id);
         }
-        
+
         return messageIds;
     }
 
     async drain(queueName, timeout = 30000) {
         return new Promise((resolve, reject) => {
             const startTime = Date.now();
-            
+
             const checkEmpty = () => {
                 const status = this.getQueueStatus(queueName);
-                
+
                 if (status.pending === 0 && status.processing === 0) {
                     resolve();
                 } else if (Date.now() - startTime > timeout) {
@@ -348,7 +348,7 @@ class MessageQueue extends EventEmitter {
                     setTimeout(checkEmpty, 100);
                 }
             };
-            
+
             checkEmpty();
         });
     }
@@ -357,7 +357,7 @@ class MessageQueue extends EventEmitter {
         try {
             const queue = this.queues.get(queueName) || [];
             const key = `queue_${queueName}`;
-            
+
             await cache.set(key, queue, 3600);
             return true;
         } catch (error) {
@@ -370,15 +370,15 @@ class MessageQueue extends EventEmitter {
         try {
             const key = `queue_${queueName}`;
             const savedQueue = await cache.get(key);
-            
+
             if (savedQueue) {
                 this.queues.set(queueName, savedQueue);
                 this.processing.set(queueName, new Set());
-                
+
                 this.processQueue(queueName);
                 return savedQueue.length;
             }
-            
+
             return 0;
         } catch (error) {
             logger.error('Failed to restore queue:', error);
@@ -389,7 +389,7 @@ class MessageQueue extends EventEmitter {
     generateQueueReport() {
         const stats = this.getStats();
         const queues = this.getAllQueues();
-        
+
         let report = `📊 *Message Queue Report*\n\n`;
         report += `📈 *Global Statistics:*\n`;
         report += `├ Total Queued: ${stats.queued}\n`;
@@ -414,15 +414,15 @@ class MessageQueue extends EventEmitter {
     setupHealthCheck() {
         setInterval(() => {
             const stats = this.getStats();
-            
+
             if (stats.totalPending > 1000) {
                 logger.warn('Message queue backlog detected:', stats);
                 this.emit('queue:backlog', stats);
             }
-            
+
             for (const [queueName, queue] of this.queues) {
                 const processing = this.processing.get(queueName);
-                
+
                 if (queue.length > 0 && processing.size === 0) {
                     logger.debug(`Restarting stalled queue: ${queueName}`);
                     this.processQueue(queueName);
@@ -436,23 +436,23 @@ const messageQueue = new MessageQueue();
 
 messageQueue.setupHealthCheck();
 
-module.exports = {
-    messageQueue,
-    addMessage: (queueName, message, options) => messageQueue.addMessage(queueName, message, options),
-    removeMessage: (queueName, messageId) => messageQueue.removeMessage(queueName, messageId),
-    clearQueue: (queueName) => messageQueue.clearQueue(queueName),
-    pauseQueue: (queueName) => messageQueue.pauseQueue(queueName),
-    resumeQueue: (queueName) => messageQueue.resumeQueue(queueName),
-    getQueueStatus: (queueName) => messageQueue.getQueueStatus(queueName),
-    getAllQueues: () => messageQueue.getAllQueues(),
-    getStats: () => messageQueue.getStats(),
-    scheduleMessage: (queueName, message, scheduleTime, options) => messageQueue.scheduleMessage(queueName, message, scheduleTime, options),
-    scheduleRecurring: (queueName, message, interval, options) => messageQueue.scheduleRecurring(queueName, message, interval, options),
-    createPriorityMessage: (queueName, message, priority) => messageQueue.createPriorityMessage(queueName, message, priority),
-    createDelayedMessage: (queueName, message, delay) => messageQueue.createDelayedMessage(queueName, message, delay),
-    bulkAdd: (queueName, messages, options) => messageQueue.bulkAdd(queueName, messages, options),
-    drain: (queueName, timeout) => messageQueue.drain(queueName, timeout),
-    persistQueue: (queueName) => messageQueue.persistQueue(queueName),
-    restoreQueue: (queueName) => messageQueue.restoreQueue(queueName),
-    generateQueueReport: () => messageQueue.generateQueueReport()
-};
+export { messageQueue };
+export const addMessage = (queueName, message, options) => messageQueue.addMessage(queueName, message, options);
+export const removeMessage = (queueName, messageId) => messageQueue.removeMessage(queueName, messageId);
+export const clearQueue = (queueName) => messageQueue.clearQueue(queueName);
+export const pauseQueue = (queueName) => messageQueue.pauseQueue(queueName);
+export const resumeQueue = (queueName) => messageQueue.resumeQueue(queueName);
+export const getQueueStatus = (queueName) => messageQueue.getQueueStatus(queueName);
+export const getAllQueues = () => messageQueue.getAllQueues();
+export const getStats = () => messageQueue.getStats();
+export const scheduleMessage = (queueName, message, scheduleTime, options) => messageQueue.scheduleMessage(queueName, message, scheduleTime, options);
+export const scheduleRecurring = (queueName, message, interval, options) => messageQueue.scheduleRecurring(queueName, message, interval, options);
+export const createPriorityMessage = (queueName, message, priority) => messageQueue.createPriorityMessage(queueName, message, priority);
+export const createDelayedMessage = (queueName, message, delay) => messageQueue.createDelayedMessage(queueName, message, delay);
+export const bulkAdd = (queueName, messages, options) => messageQueue.bulkAdd(queueName, messages, options);
+export const drain = (queueName, timeout) => messageQueue.drain(queueName, timeout);
+export const persistQueue = (queueName) => messageQueue.persistQueue(queueName);
+export const restoreQueue = (queueName) => messageQueue.restoreQueue(queueName);
+export const generateQueueReport = () => messageQueue.generateQueueReport();
+
+export default messageQueue;
