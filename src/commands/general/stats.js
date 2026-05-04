@@ -1,6 +1,6 @@
 export default {
     name: 'stats',
-    aliases: ['botinfo','info'],
+    aliases: ['botinfo', 'info'],
     category: 'owner',
     description: 'Show bot statistics and health',
     usage: 'stats',
@@ -24,14 +24,14 @@ export default {
         let commandStats = { totalExecutions: 0, successfulExecutions: 0, failedExecutions: 0 };
         let topCmds = [];
         try {
-            const { commandHandler } = await import('../../../handlers/commandHandler.js');
+            const { commandHandler } = await import('../../handlers/commandHandler.js');
             commandStats = commandHandler.getCommandStats();
             topCmds = commandHandler.getTopCommands(5);
         } catch {}
 
         let totalCmds = 0;
         try {
-            const { getAllCommands } = await import('../../../utils/commandManager.js');
+            const { getAllCommands } = await import('../../utils/commandManager.js');
             totalCmds = getAllCommands().length;
         } catch {}
 
