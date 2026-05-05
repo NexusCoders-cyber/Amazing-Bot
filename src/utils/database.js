@@ -1,4 +1,6 @@
 import mongoose from 'mongoose';
+import fs from 'fs-extra';
+import path from 'path';
 import config from '../config.js';
 import logger from './logger.js';
 
@@ -19,59 +21,51 @@ class DatabaseManager {
             }
 
             logger.info('Connecting to database...');
-            if (config.database.url && typeof config.database.url === 'string' && config.database.url.length > 0) {
-                const sanitizedUrl = config.database.url.replace(/\/\/([^:]+):([^@]+)@/, '//****:****@');
-                logger.info(`Database URL: ${sanitizedUrl}`);
-            } else {
-                logger.info('Database URL: <not configured>');
-            }
-            
-            // For development/Replit environment, skip database connection
-            if (process.env.NODE_ENV === 'development' || !config.database.url || 
-                config.database.url.includes('localhost') || config.database.url.length < 20 ||
-                config.database.url === 'mongodb://localhost:27017/ilombot' ||
-                config.database.url.includes('ENOTFOUND') || config.database.url === '1' ||
-                config.database.url.includes('@1@') || config.database.url.includes('isaiahilom') ||
-                config.database.url.startsWith('postgresql://') || 
-                config.database.url.includes('helium') || 
-                process.env.REPLIT_ENVIRONMENT) {
-                logger.info('🔧 Development/Replit mode: Skipping database connection');
+
+            const dbUrl = config.database?.url || '';
+
+            const skipConditions = [
+                !dbUrl,
+                dbUrl === 'mongodb://localhost:27017/ilombot',
+                dbUrl.includes('localhost'),
+                dbUrl.length < 20,
+                process.env.REPLIT_ENVIRONMENT,
+                process.env.REPL_ID,
+                process.env.NODE_ENV === 'development' && !process.env.MONGODB_URL
+            ];
+
+            if (skipConditions.some(Boolean)) {
+                logger.info('Using simulated database (no valid MongoDB URL configured)');
                 this.isConnected = true;
-                this.reconnectAttempts = 0;
                 mongoose.set('bufferCommands', false);
-                logger.info('✅ Database (simulated) connected successfully');
-                return { readyState: 0, simulated: true }; // Mock connection
+                mongoose.connection.simulated = true;
+                return { readyState: 0, simulated: true };
             }
-            
+
+            const sanitized = dbUrl.replace(/\/\/([^:]+):([^@]+)@/, '//****:****@');
+            logger.info(`Connecting to: ${sanitized}`);
+
             mongoose.set('strictQuery', false);
-            
-            this.connection = await mongoose.connect(config.database.url, {
+
+            this.connection = await mongoose.connect(dbUrl, {
                 ...config.database.options,
                 dbName: 'ilombot'
             });
 
             this.isConnected = true;
             this.reconnectAttempts = 0;
-            
+
             logger.info('✅ Database connected successfully');
-            
             this.setupEventListeners();
             await this.runMigrations();
-            
-            return this.connection;
 
+            return this.connection;
         } catch (error) {
-            logger.error('❌ Database connection failed:', error);
-            
-            // In development, continue without real database
-            if (process.env.NODE_ENV === 'development') {
-                logger.warn('⚠️ Continuing without database in development mode');
-                this.isConnected = true;
-                return { readyState: 1 }; // Mock connection
-            }
-            
-            await this.handleConnectionError(error);
-            throw error;
+            logger.warn(`Database connection failed: ${error.message} — running without DB`);
+            this.isConnected = true;
+            mongoose.set('bufferCommands', false);
+            mongoose.connection.simulated = true;
+            return { readyState: 0, simulated: true };
         }
     }
 
@@ -82,7 +76,7 @@ class DatabaseManager {
         });
 
         mongoose.connection.on('error', (error) => {
-            logger.error('Database error:', error);
+            logger.error('Database error:', error.message);
             this.isConnected = false;
         });
 
@@ -102,34 +96,6 @@ class DatabaseManager {
         process.on('SIGTERM', this.gracefulShutdown.bind(this));
     }
 
-    async handleConnectionError(error) {
-        if (error.name === 'MongoNetworkError' || error.name === 'MongooseServerSelectionError') {
-            logger.warn('Network error detected, attempting fallback connection...');
-            await this.tryFallbackConnection();
-        }
-    }
-
-    async tryFallbackConnection() {
-        const fallbackUrls = [
-            'mongodb://127.0.0.1:27017/ilombot',
-            'mongodb://localhost:27017/ilombot'
-        ];
-
-        for (const url of fallbackUrls) {
-            try {
-                logger.info(`Trying fallback URL: ${url}`);
-                this.connection = await mongoose.connect(url, config.database.options);
-                this.isConnected = true;
-                logger.info('✅ Connected to fallback database');
-                return;
-            } catch (error) {
-                logger.warn(`Fallback connection failed: ${error.message}`);
-            }
-        }
-
-        throw new Error('All database connection attempts failed');
-    }
-
     async handleReconnection() {
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
             logger.error('Max reconnection attempts reached');
@@ -137,126 +103,104 @@ class DatabaseManager {
         }
 
         this.reconnectAttempts++;
-        logger.info(`Attempting reconnection ${this.reconnectAttempts}/${this.maxReconnectAttempts}...`);
+        logger.info(`Reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
 
         setTimeout(async () => {
             try {
                 await mongoose.connect(config.database.url, config.database.options);
             } catch (error) {
-                logger.error('Reconnection failed:', error);
+                logger.error(`Reconnection failed: ${error.message}`);
                 this.handleReconnection();
             }
         }, this.reconnectDelay * this.reconnectAttempts);
     }
 
     async gracefulShutdown() {
-        logger.info('Shutting down database connection...');
+        logger.info('Closing database connection...');
         try {
             await mongoose.connection.close();
             logger.info('Database connection closed');
             process.exit(0);
-        } catch (error) {
-            logger.error('Error closing database connection:', error);
+        } catch {
             process.exit(1);
         }
     }
 
     async runMigrations() {
         try {
-            logger.info('Running database migrations...');
-            
-            const collections = await mongoose.connection.db.listCollections().toArray();
-            const collectionNames = collections.map(col => col.name);
+            if (mongoose.connection.readyState !== 1) return;
 
-            const requiredCollections = [
+            const collections = await mongoose.connection.db.listCollections().toArray();
+            const names = collections.map(c => c.name);
+
+            const required = [
                 'users', 'groups', 'messages', 'commands', 'economy',
                 'games', 'warnings', 'bans', 'premium', 'settings', 'logs'
             ];
 
-            for (const collectionName of requiredCollections) {
-                if (!collectionNames.includes(collectionName)) {
-                    await mongoose.connection.db.createCollection(collectionName);
-                    logger.info(`Created collection: ${collectionName}`);
+            for (const col of required) {
+                if (!names.includes(col)) {
+                    await mongoose.connection.db.createCollection(col);
                 }
             }
 
             await this.createIndexes();
             logger.info('✅ Migrations completed');
-
         } catch (error) {
-            logger.error('Migration failed:', error);
+            logger.error('Migration failed:', error.message);
         }
     }
 
     async createIndexes() {
         try {
+            if (mongoose.connection.readyState !== 1) return;
             const db = mongoose.connection.db;
 
-            await db.collection('users').createIndex({ jid: 1 }, { unique: true });
-            await db.collection('users').createIndex({ phone: 1 });
-            await db.collection('users').createIndex({ 'economy.balance': -1 });
-            
-            await db.collection('groups').createIndex({ jid: 1 }, { unique: true });
-            await db.collection('groups').createIndex({ name: 1 });
-            
-            await db.collection('messages').createIndex({ messageId: 1 }, { unique: true });
-            await db.collection('messages').createIndex({ from: 1, timestamp: -1 });
-            await db.collection('messages').createIndex({ sender: 1, timestamp: -1 });
-            
-            await db.collection('commands').createIndex({ command: 1, sender: 1, timestamp: -1 });
-            await db.collection('commands').createIndex({ timestamp: -1 });
-            
-            await db.collection('logs').createIndex({ timestamp: -1 });
-            await db.collection('logs').createIndex({ level: 1, timestamp: -1 });
-
-            logger.info('Database indexes created');
-
+            await db.collection('users').createIndex({ jid: 1 }, { unique: true, background: true });
+            await db.collection('users').createIndex({ phone: 1 }, { background: true });
+            await db.collection('groups').createIndex({ jid: 1 }, { unique: true, background: true });
+            await db.collection('messages').createIndex({ messageId: 1 }, { unique: true, background: true });
+            await db.collection('messages').createIndex({ from: 1, timestamp: -1 }, { background: true });
+            await db.collection('logs').createIndex({ timestamp: -1 }, { background: true });
         } catch (error) {
-            logger.error('Failed to create indexes:', error);
+            logger.debug(`Index creation skipped: ${error.message}`);
         }
     }
 
     async getStats() {
-        if (!this.isConnected) return null;
-
+        if (mongoose.connection.readyState !== 1) return null;
         try {
-            const db = mongoose.connection.db;
-            const stats = await db.stats();
-            
+            const stats = await mongoose.connection.db.stats();
             return {
-                connected: this.isConnected,
+                connected: true,
                 database: stats.db,
                 collections: stats.collections,
                 dataSize: Math.round(stats.dataSize / 1024 / 1024 * 100) / 100,
-                indexSize: Math.round(stats.indexSize / 1024 / 1024 * 100) / 100,
-                totalSize: Math.round((stats.dataSize + stats.indexSize) / 1024 / 1024 * 100) / 100
+                indexSize: Math.round(stats.indexSize / 1024 / 1024 * 100) / 100
             };
-        } catch (error) {
-            logger.error('Failed to get database stats:', error);
+        } catch {
             return null;
         }
     }
 
     async healthCheck() {
         try {
-            if (!this.isConnected) return false;
-            
+            if (mongoose.connection.readyState !== 1) return false;
             await mongoose.connection.db.admin().ping();
             return true;
-        } catch (error) {
-            logger.error('Database health check failed:', error);
+        } catch {
             return false;
         }
     }
 
     async backup() {
-        if (!this.isConnected) {
+        if (mongoose.connection.readyState !== 1) {
             throw new Error('Database not connected');
         }
 
         try {
             logger.info('Starting database backup...');
-            
+
             const backupData = {
                 timestamp: new Date().toISOString(),
                 users: await mongoose.connection.db.collection('users').find({}).toArray(),
@@ -265,75 +209,65 @@ class DatabaseManager {
                 premium: await mongoose.connection.db.collection('premium').find({}).toArray()
             };
 
-            const fs = require('fs-extra');
-            const path = require('path');
-            
             const backupDir = path.join(process.cwd(), 'backups', 'database');
             await fs.ensureDir(backupDir);
-            
+
             const backupFile = path.join(backupDir, `backup_${Date.now()}.json`);
             await fs.writeJSON(backupFile, backupData, { spaces: 2 });
-            
+
             logger.info(`Database backup saved: ${backupFile}`);
             return backupFile;
-
         } catch (error) {
-            logger.error('Database backup failed:', error);
+            logger.error('Database backup failed:', error.message);
             throw error;
         }
     }
 
     async restore(backupFile) {
-        if (!this.isConnected) {
+        if (mongoose.connection.readyState !== 1) {
             throw new Error('Database not connected');
         }
 
         try {
             logger.info(`Restoring database from: ${backupFile}`);
-            
-            const fs = require('fs-extra');
+
             const backupData = await fs.readJSON(backupFile);
-            
             const collections = ['users', 'groups', 'settings', 'premium'];
-            
-            for (const collection of collections) {
-                if (backupData[collection]) {
-                    await mongoose.connection.db.collection(collection).deleteMany({});
-                    await mongoose.connection.db.collection(collection).insertMany(backupData[collection]);
-                    logger.info(`Restored ${collection}: ${backupData[collection].length} records`);
+
+            for (const col of collections) {
+                if (backupData[col] && backupData[col].length > 0) {
+                    await mongoose.connection.db.collection(col).deleteMany({});
+                    await mongoose.connection.db.collection(col).insertMany(backupData[col]);
+                    logger.info(`Restored ${col}: ${backupData[col].length} records`);
                 }
             }
-            
-            logger.info('✅ Database restoration completed');
 
+            logger.info('✅ Database restoration completed');
         } catch (error) {
-            logger.error('Database restoration failed:', error);
+            logger.error('Database restoration failed:', error.message);
             throw error;
         }
     }
 
     async cleanup() {
-        if (!this.isConnected) return;
+        if (mongoose.connection.readyState !== 1) return;
 
         try {
-            logger.info('Running database cleanup...');
-            
             const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-            
-            const result1 = await mongoose.connection.db.collection('messages')
-                .deleteMany({ timestamp: { $lt: thirtyDaysAgo }, isCommand: false });
-            
-            const result2 = await mongoose.connection.db.collection('logs')
-                .deleteMany({ timestamp: { $lt: thirtyDaysAgo }, level: { $in: ['debug', 'silly'] } });
-            
             const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-            const result3 = await mongoose.connection.db.collection('commands')
+
+            const r1 = await mongoose.connection.db.collection('messages')
+                .deleteMany({ timestamp: { $lt: thirtyDaysAgo }, isCommand: false });
+
+            const r2 = await mongoose.connection.db.collection('logs')
+                .deleteMany({ timestamp: { $lt: thirtyDaysAgo }, level: { $in: ['debug', 'silly'] } });
+
+            const r3 = await mongoose.connection.db.collection('commands')
                 .deleteMany({ timestamp: { $lt: sevenDaysAgo } });
 
-            logger.info(`Cleanup completed: ${result1.deletedCount + result2.deletedCount + result3.deletedCount} records removed`);
-
+            logger.info(`Cleanup: removed ${r1.deletedCount + r2.deletedCount + r3.deletedCount} records`);
         } catch (error) {
-            logger.error('Database cleanup failed:', error);
+            logger.error('Database cleanup failed:', error.message);
         }
     }
 
@@ -342,13 +276,7 @@ class DatabaseManager {
     }
 
     getConnectionState() {
-        const states = {
-            0: 'disconnected',
-            1: 'connected',
-            2: 'connecting',
-            3: 'disconnecting'
-        };
-        
+        const states = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
         return {
             state: states[mongoose.connection.readyState] || 'unknown',
             readyState: mongoose.connection.readyState,
