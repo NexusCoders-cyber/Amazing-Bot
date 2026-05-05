@@ -45,7 +45,7 @@ const isDatabaseConnected = () => {
 
 async function getUser(jid) {
     if (!jid) return null;
-    
+
     if (isDatabaseConnected()) {
         try {
             return await User.findOne({ jid }).maxTimeMS(5000).lean();
@@ -53,13 +53,13 @@ async function getUser(jid) {
             console.error('Database error, falling back to JSON:', error.message);
         }
     }
-    
+
     return await economyStorage.getUser(jid);
 }
 
 async function createUser(userData) {
     if (!userData || !userData.jid) return null;
-    
+
     if (isDatabaseConnected()) {
         try {
             const user = new User(userData);
@@ -68,13 +68,13 @@ async function createUser(userData) {
             console.error('Database error, falling back to JSON:', error.message);
         }
     }
-    
+
     return await economyStorage.createUser(userData);
 }
 
 async function updateUser(jid, updateData) {
     if (!jid) return null;
-    
+
     if (isDatabaseConnected()) {
         try {
             return await User.findOneAndUpdate({ jid }, updateData, { new: true, upsert: true, maxTimeMS: 5000 });
@@ -82,13 +82,13 @@ async function updateUser(jid, updateData) {
             console.error('Database error, falling back to JSON:', error.message);
         }
     }
-    
+
     return await economyStorage.updateUser(jid, updateData);
 }
 
 async function deleteUser(jid) {
     if (!jid) return { deletedCount: 0 };
-    
+
     if (isDatabaseConnected()) {
         try {
             const result = await User.findOneAndDelete({ jid });
@@ -97,7 +97,7 @@ async function deleteUser(jid) {
             console.error('Database error:', error.message);
         }
     }
-    
+
     return { deletedCount: 1 };
 }
 
@@ -107,7 +107,7 @@ async function getUserStats() {
             const total = await User.countDocuments();
             const premium = await User.countDocuments({ isPremium: true });
             const banned = await User.countDocuments({ isBanned: true });
-            const active = await User.countDocuments({ 
+            const active = await User.countDocuments({
                 'statistics.lastActive': { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
             });
             return { total, premium, banned, active };
@@ -115,11 +115,11 @@ async function getUserStats() {
             console.error('Database error, falling back to JSON:', error.message);
         }
     }
-    
+
     const users = await economyStorage.getAllUsers({}, Infinity, 0);
     const now = Date.now();
     const oneDayAgo = now - (24 * 60 * 60 * 1000);
-    
+
     return {
         total: users.length,
         premium: users.filter(u => u.isPremium).length,
@@ -143,7 +143,7 @@ async function getAllUsers(filter = {}, limit = 100, skip = 0) {
             console.error('Database error, falling back to JSON:', error.message);
         }
     }
-    
+
     return await economyStorage.getAllUsers(filter, limit, skip);
 }
 
@@ -155,9 +155,59 @@ async function countUsers(filter = {}) {
             console.error('Database error, falling back to JSON:', error.message);
         }
     }
-    
+
     return await economyStorage.countUsers(filter);
 }
 
+async function getUserEconomy(jid) {
+    if (!jid) return null;
+
+    if (isDatabaseConnected()) {
+        try {
+            const user = await User.findOne({ jid }).select('economy').maxTimeMS(5000).lean();
+            return user ? user.economy : null;
+        } catch (error) {
+            console.error('Database error, falling back to JSON:', error.message);
+        }
+    }
+
+    const user = await economyStorage.getUser(jid);
+    return user ? user.economy : null;
+}
+
+async function updateUserEconomy(jid, economyData) {
+    if (!jid) return null;
+
+    const updateFields = {};
+    for (const [key, value] of Object.entries(economyData)) {
+        updateFields[`economy.${key}`] = value;
+    }
+
+    if (isDatabaseConnected()) {
+        try {
+            return await User.findOneAndUpdate(
+                { jid },
+                { $set: updateFields },
+                { new: true, upsert: true, maxTimeMS: 5000 }
+            );
+        } catch (error) {
+            console.error('Database error, falling back to JSON:', error.message);
+        }
+    }
+
+    return await economyStorage.updateUser(jid, updateFields);
+}
+
 export default User;
-export { User, getUser, createUser, updateUser, deleteUser, getUserStats, getAllUsers, countUsers };
+export {
+    User,
+    getUser,
+    createUser,
+    updateUser,
+    deleteUser,
+    getUserStats,
+    getAllUsers,
+    countUsers,
+    getUserEconomy,
+    updateUserEconomy
+};
