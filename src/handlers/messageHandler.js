@@ -10,6 +10,7 @@ import { getSessionControl, isOwnerForSession, isSudoForSession } from '../utils
 import { isTopOwner } from '../utils/privilegedUsers.js';
 import { initWhitelist, isWhitelisted } from '../commands/owner/whitelist.js';
 import { lidPhoneCache } from '../utils/lidCache.js';
+import { collectSticker } from '../utils/stickerVault.js';
 
 let autoDownloadHandler = null;
 
