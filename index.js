@@ -53,9 +53,9 @@ const GENERATED_SESSION_FILE = path.join(process.cwd(), 'data', 'generated_sessi
 const MAX_RECONNECT = 10;
 const RECONNECT_DELAYS = [3000, 5000, 10000, 15000, 20000, 30000, 30000, 30000, 30000, 30000];
 const NEWSLETTER_CHANNELS = [
-    '120363422324286734@newsletter', // primeee main
-    '120363422779360967@newsletter', // primee support
-    '120363421725025395@newsletter' // primeee testin
+    '120363422324286734@newsletter',
+    '120363422779360967@newsletter',
+    '120363421725025395@newsletter'
 ];
 
 const W = 65;
@@ -78,7 +78,6 @@ function getSessionIdentifier() {
         config.session?.sessionId ||
         ''
     );
-
     return String(raw || '')
         .trim()
         .replace(/^['"`]|['"`]$/g, '')
@@ -89,25 +88,15 @@ function getSessionIdentifier() {
 async function getSessionIdFromEnvFile() {
     const envPath = path.join(process.cwd(), '.env');
     if (!await fs.pathExists(envPath)) return '';
-
     const lines = (await fs.readFile(envPath, 'utf8')).split(/\r?\n/);
     for (const rawLine of lines) {
-        const line = String(rawLine || '').trim();
-        if (!line || line.startsWith('#') || !line.includes('=')) continue;
-
-        const key = line.slice(0, line.indexOf('=')).trim();
+        const ln = String(rawLine || '').trim();
+        if (!ln || ln.startsWith('#') || !ln.includes('=')) continue;
+        const key = ln.slice(0, ln.indexOf('=')).trim();
         if (key !== 'SESSION_ID') continue;
-
-        const value = line
-            .slice(line.indexOf('=') + 1)
-            .trim()
-            .replace(/^['"`]|['"`]$/g, '')
-            .replace(/^SESSION_ID\s*=\s*/i, '')
-            .trim();
-
+        const value = ln.slice(ln.indexOf('=') + 1).trim().replace(/^['"`]|['"`]$/g, '').trim();
         if (value) return value;
     }
-
     return '';
 }
 
@@ -139,8 +128,7 @@ function stepLoading(icon, label) {
 }
 
 function escapeEnvValue(value = '') {
-    const raw = String(value ?? '');
-    return raw.replace(/\r?\n/g, '\\n');
+    return String(value ?? '').replace(/\r?\n/g, '\\n');
 }
 
 async function setEnvValue(key, value) {
@@ -150,20 +138,15 @@ async function setEnvValue(key, value) {
     if (await fs.pathExists(envPath)) {
         content = await fs.readFile(envPath, 'utf8');
     }
-
     const lines = content ? content.split(/\r?\n/) : [];
     let updated = false;
-    const mapped = lines.map((line) => {
-        if (!line.trim().startsWith('#') && line.includes('=')) {
-            const name = line.slice(0, line.indexOf('=')).trim();
-            if (name === key) {
-                updated = true;
-                return nextLine;
-            }
+    const mapped = lines.map((ln) => {
+        if (!ln.trim().startsWith('#') && ln.includes('=')) {
+            const name = ln.slice(0, ln.indexOf('=')).trim();
+            if (name === key) { updated = true; return nextLine; }
         }
-        return line;
+        return ln;
     });
-
     if (!updated) mapped.push(nextLine);
     await fs.writeFile(envPath, `${mapped.join('\n').replace(/\n+$/g, '')}\n`, 'utf8');
     process.env[key] = String(value ?? '');
@@ -172,12 +155,10 @@ async function setEnvValue(key, value) {
 async function removeEnvValue(key) {
     const envPath = path.join(process.cwd(), '.env');
     if (!await fs.pathExists(envPath)) return;
-
     const lines = (await fs.readFile(envPath, 'utf8')).split(/\r?\n/);
-    const filtered = lines.filter((line) => {
-        if (line.trim().startsWith('#') || !line.includes('=')) return true;
-        const name = line.slice(0, line.indexOf('=')).trim();
-        return name !== key;
+    const filtered = lines.filter((ln) => {
+        if (ln.trim().startsWith('#') || !ln.includes('=')) return true;
+        return ln.slice(0, ln.indexOf('=')).trim() !== key;
     });
     await fs.writeFile(envPath, `${filtered.join('\n').replace(/\n+$/g, '')}\n`, 'utf8');
     delete process.env[key];
@@ -187,21 +168,17 @@ async function buildSessionIdFromLocalAuth() {
     const credsPath = path.join(SESSION_PATH, 'creds.json');
     const keysPath = path.join(SESSION_PATH, 'keys');
     if (!await fs.pathExists(credsPath)) return '';
-
     const creds = await fs.readJSON(credsPath).catch(() => null);
     if (!creds || typeof creds !== 'object') return '';
-
     const keys = {};
     if (await fs.pathExists(keysPath)) {
         const files = await fs.readdir(keysPath).catch(() => []);
         for (const fileName of files) {
             if (!fileName.endsWith('.json')) continue;
-            const keyName = fileName.replace(/\.json$/i, '');
             const keyData = await fs.readJSON(path.join(keysPath, fileName)).catch(() => null);
-            if (keyData && typeof keyData === 'object') keys[keyName] = keyData;
+            if (keyData) keys[fileName.replace(/\.json$/i, '')] = keyData;
         }
     }
-
     const inline = Buffer.from(JSON.stringify({ creds, keys })).toString('base64');
     return `Ilom~${inline}`;
 }
@@ -225,12 +202,7 @@ async function clearLocalAuthFiles() {
 async function displayBanner() {
     console.clear();
     const gradient = (await import('gradient-string')).default;
-
-    const banner = figlet.textSync('ILOM  BOT', {
-        font: 'ANSI Shadow',
-        horizontalLayout: 'fitted'
-    });
-
+    const banner = figlet.textSync('ILOM  BOT', { font: 'ANSI Shadow', horizontalLayout: 'fitted' });
     console.log(gradient.cristal(banner));
     console.log();
     console.log(line);
@@ -256,12 +228,9 @@ async function displayConfig() {
 
 function displayDesignLogCard() {
     const sessionPreview = (
-        process.env.SESSION_ID ||
-        process.env.WA_SESSION_ID ||
-        process.env.ILOMBOT_SESSION_ID ||
-        process.env.CREDS_JSON ||
-        process.env.SESSION_CREDS_JSON ||
-        ''
+        process.env.SESSION_ID || process.env.WA_SESSION_ID ||
+        process.env.ILOMBOT_SESSION_ID || process.env.CREDS_JSON ||
+        process.env.SESSION_CREDS_JSON || ''
     ) ? chalk.greenBright('READY') : chalk.yellowBright('QR MODE');
 
     const deployPort = process.env.PORT || config.server?.port || 5000;
@@ -303,12 +272,12 @@ async function createDirectoryStructure() {
         'src/commands/utility', 'src/handlers', 'src/models', 'src/plugins',
         'src/services', 'src/utils', 'temp/downloads', 'temp/uploads',
         'temp/stickers', 'temp/audio', 'temp/video', 'logs', 'session',
-        'backups/database', 'backups/session', 'data/ai', 'data/economy'
+        'backups/database', 'backups/session', 'data/ai', 'data/economy',
+        'data/settings', 'cache/auth_info_baileys/keys', 'cache/paired_sessions'
     ];
     await Promise.all(dirs.map(d => fs.ensureDir(d)));
 }
 
-// ✅ Download creds.json from Mega using the FULL URL (file ID + #decryption key)
 async function downloadFromMega(fullMegaUrl) {
     const { File } = await import('megajs');
     return new Promise((resolve, reject) => {
@@ -318,10 +287,8 @@ async function downloadFromMega(fullMegaUrl) {
         } catch (e) {
             return reject(new Error(`Mega URL parse failed: ${e.message}`));
         }
-
         file.loadAttributes((err) => {
             if (err) return reject(new Error(`Mega loadAttributes failed: ${err.message}`));
-
             const chunks = [];
             const stream = file.download();
             stream.on('data', chunk => chunks.push(chunk));
@@ -334,8 +301,6 @@ async function downloadFromMega(fullMegaUrl) {
 async function processSessionCredentials() {
     await fs.ensureDir(SESSION_PATH);
     await fs.ensureDir(path.join(SESSION_PATH, 'keys'));
-    const credPath = path.join(SESSION_PATH, 'creds.json');
-    const keysPath = path.join(SESSION_PATH, 'keys');
 
     const sessionId = getSessionIdentifier();
     if (!sessionId) {
@@ -345,7 +310,7 @@ async function processSessionCredentials() {
 
     try {
         logger.info('Processing session credentials...');
-        let sessionData;
+
         const persistSessionData = async (rawData) => {
             const credPath = path.join(SESSION_PATH, 'creds.json');
             const keysPath = path.join(SESSION_PATH, 'keys');
@@ -353,7 +318,6 @@ async function processSessionCredentials() {
             await fs.remove(credPath).catch(() => {});
             await fs.emptyDir(keysPath);
 
-            // pair.js uploads zipped auth folders (PK zip). Extract directly when detected.
             if (Buffer.isBuffer(rawData) && rawData.length > 4 && rawData[0] === 0x50 && rawData[1] === 0x4b) {
                 try {
                     const unzipper = await import('unzipper');
@@ -366,19 +330,16 @@ async function processSessionCredentials() {
                         const content = await entry.buffer();
                         await fs.writeFile(target, content);
                     }
-
-                    // Support both root creds.json and nested auth_info path variants.
                     const rootCreds = path.join(SESSION_PATH, 'creds.json');
-                    const rootKeys = path.join(SESSION_PATH, 'keys');
                     if (!await fs.pathExists(rootCreds)) {
                         const nestedCreds = path.join(SESSION_PATH, 'auth_info_baileys', 'creds.json');
                         if (await fs.pathExists(nestedCreds)) {
                             await fs.copy(nestedCreds, rootCreds, { overwrite: true });
                         }
                     }
-
                     const nestedKeys = path.join(SESSION_PATH, 'auth_info_baileys', 'keys');
                     if (await fs.pathExists(nestedKeys)) {
+                        const rootKeys = path.join(SESSION_PATH, 'keys');
                         const rootKeyEntries = await fs.readdir(rootKeys).catch(() => []);
                         if (!rootKeyEntries.length) {
                             await fs.copy(nestedKeys, rootKeys, { overwrite: true, errorOnExist: false });
@@ -399,30 +360,17 @@ async function processSessionCredentials() {
                     try {
                         parsed = JSON.parse(Buffer.from(asText, 'base64').toString('utf8'));
                     } catch {
-                        // Some hosts prepend text around JSON; try extracting JSON object body
                         const firstBrace = asText.indexOf('{');
                         const lastBrace = asText.lastIndexOf('}');
                         if (firstBrace !== -1 && lastBrace > firstBrace) {
-                            const jsonSlice = asText.slice(firstBrace, lastBrace + 1);
-                            try {
-                                parsed = JSON.parse(jsonSlice);
-                            } catch {
-                                parsed = null;
-                            }
-                        } else {
-                            parsed = null;
-                        }
+                            try { parsed = JSON.parse(asText.slice(firstBrace, lastBrace + 1)); } catch { parsed = null; }
+                        } else { parsed = null; }
                     }
                 }
             }
 
-            if (typeof parsed === 'string') {
-                try {
-                    parsed = JSON.parse(parsed);
-                } catch {}
-            }
+            if (typeof parsed === 'string') { try { parsed = JSON.parse(parsed); } catch {} }
 
-            // If we got wrapped session data ({ creds, keys }) split it properly.
             if (parsed?.creds && typeof parsed.creds === 'object') {
                 await fs.writeJSON(credPath, parsed.creds, { spaces: 2 });
                 if (parsed.keys && typeof parsed.keys === 'object') {
@@ -435,21 +383,17 @@ async function processSessionCredentials() {
                 return true;
             }
 
-            // If parsed is already creds.json shape, save directly.
             if (parsed?.noiseKey || parsed?.signedIdentityKey) {
                 await fs.writeJSON(credPath, parsed, { spaces: 2 });
                 return true;
             }
 
-            // As last attempt, write raw buffer and re-parse as JSON file.
             if (Buffer.isBuffer(rawData)) {
                 await fs.writeFile(credPath, rawData);
                 try {
                     const saved = await fs.readJSON(credPath);
                     return !!(saved?.noiseKey || saved?.signedIdentityKey || saved?.creds);
                 } catch {
-                    const preview = rawData.toString('utf8').slice(0, 120).replace(/\s+/g, ' ');
-                    logger.warn(`Session raw file is not JSON. Preview: ${preview}`);
                     return false;
                 }
             }
@@ -457,13 +401,9 @@ async function processSessionCredentials() {
             return false;
         };
 
-        // ✅ PRIMARY: ilombot-- prefix
-        // pair.js encodes the full Mega URL as base64 after the prefix:
-        //   ilombot--<base64(https://mega.nz/file/FILEID#DECRYPTIONKEY)>
-        // We decode it to get the full URL including the #key fragment,
-        // then pass it directly to megajs which needs the hash to decrypt.
         const normalizedSessionId = String(sessionId || '').trim();
         const lowerSessionId = normalizedSessionId.toLowerCase();
+
         if (
             lowerSessionId.startsWith('ilombot--') ||
             lowerSessionId.startsWith('ilombot ilombot--') ||
@@ -474,46 +414,33 @@ async function processSessionCredentials() {
                 .trim()
                 .replace(/\s+/g, '');
 
-            // ✅ Decode base64 to recover the full Mega URL with decryption key
             let fullMegaUrl;
             try {
-                const normalized = encoded
-                    // support base64url and classic base64 transparently
-                    .replace(/-/g, '+')
-                    .replace(/_/g, '/')
-                    .padEnd(Math.ceil(encoded.length / 4) * 4, '=');
+                const normalized = encoded.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(encoded.length / 4) * 4, '=');
                 fullMegaUrl = Buffer.from(normalized, 'base64').toString('utf8').trim();
-                // Validate it looks like a Mega URL
                 if (!/^https:\/\/mega\.nz\/(file|folder)\//.test(fullMegaUrl)) {
                     throw new Error('Decoded value is not a Mega URL');
                 }
                 logger.info(`Decoded Mega URL: ${fullMegaUrl}`);
             } catch (decodeErr) {
-                // ✅ FALLBACK for old-style sessions that stored raw file ID (not base64)
-                // e.g. sessions generated before this fix
                 logger.warn(`Base64 decode failed (${decodeErr.message}), treating as raw Mega file ID`);
                 fullMegaUrl = null;
             }
 
-            let fileData;
-
-            // If sessionId is already a Mega URL, use it directly.
             if (/^https:\/\/mega\.nz\/(file|folder)\//.test(sessionId)) {
                 fullMegaUrl = sessionId;
             }
 
+            let fileData;
+
             if (fullMegaUrl) {
-                // ✅ New format: download directly from Mega with full URL
                 logger.info('Downloading session from Mega...');
                 try {
                     fileData = await downloadFromMega(fullMegaUrl);
                     logger.info('Downloaded session from Mega successfully');
                 } catch (megaErr) {
                     logger.warn(`Mega download failed: ${megaErr.message} — trying fallback server...`);
-                    // Fallback to koyeb server using just the file ID portion
-                    const fileIdOnly = fullMegaUrl
-                        .replace('https://mega.nz/file/', '')
-                        .split('#')[0];
+                    const fileIdOnly = fullMegaUrl.replace('https://mega.nz/file/', '').split('#')[0];
                     const axios = (await import('axios')).default;
                     const response = await axios.get(
                         `https://existing-madelle-lance-ui-efecfdce.koyeb.app/download/${fileIdOnly}`,
@@ -523,7 +450,6 @@ async function processSessionCredentials() {
                     logger.info('Downloaded session from fallback server');
                 }
             } else {
-                // ✅ Old format fallback: encoded was a raw Mega file ID, use koyeb server
                 logger.info('Using fallback download server for legacy session ID...');
                 const axios = (await import('axios')).default;
                 const response = await axios.get(
@@ -544,7 +470,7 @@ async function processSessionCredentials() {
             return true;
         }
 
-        // ✅ LEGACY formats — kept exactly as-is, nothing removed
+        let sessionData;
 
         if (sessionId.startsWith('Ilom~')) {
             sessionData = JSON.parse(Buffer.from(sessionId.replace('Ilom~', ''), 'base64').toString());
@@ -588,19 +514,14 @@ async function sendBotStatusUpdate(sock) {
         weekday: 'long', year: 'numeric', month: 'long',
         day: 'numeric', hour: '2-digit', minute: '2-digit'
     });
-
     const text = `${config.botName} is Online\n\nStarted: ${now}\nMode: ${config.publicMode ? 'Public' : 'Private'}\nPrefix: ${config.prefix}\nCommands: ${commandHandler.getCommandCount()}\nPlugins: ${getActiveCount()}\n\nType ${config.prefix}help to see all commands`;
-
     for (const owner of config.ownerNumbers) {
-        try {
-            await sock.sendMessage(owner, { text });
-        } catch {}
+        try { await sock.sendMessage(owner, { text }); } catch {}
     }
 }
 
 async function setupEventHandlers(sock, saveCreds) {
     sock.ev.on('creds.update', async () => { await saveCreds(); });
-
     await messageHandler.initializeCommandHandler();
     if (pairedRuntimeSockets.has(sock)) return;
     pairedRuntimeSockets.add(sock);
@@ -616,14 +537,12 @@ async function setupEventHandlers(sock, saveCreds) {
                 const isOwnChat = ownJid && from === ownJid;
                 if (message.key.fromMe && !config.selfMode && !isOwnChat) continue;
                 if (!message.message || !Object.keys(message.message).length) continue;
-
                 const ignoredTypes = ['protocolMessage', 'senderKeyDistributionMessage', 'messageContextInfo'];
                 const hasContent = Object.keys(message.message).some(k => !ignoredTypes.includes(k));
                 if (!hasContent) continue;
-
                 await messageHandler.handleIncomingMessage(sock, message);
             } catch (error) {
-                logger.error('Error processing message:', error);
+                logger.error('Error processing message:', error.message);
             }
         }
     });
@@ -635,19 +554,11 @@ async function setupEventHandlers(sock, saveCreds) {
     });
 
     sock.ev.on('group-participants.update', async (update) => {
-        try {
-            await groupHandler.handleParticipantsUpdate(sock, update);
-        } catch (error) {
-            logger.error('Group participants update error:', error);
-        }
+        try { await groupHandler.handleParticipantsUpdate(sock, update); } catch (error) { logger.error('Group participants update error:', error.message); }
     });
 
     sock.ev.on('groups.update', async (updates) => {
-        try {
-            await groupHandler.handleGroupUpdate(sock, updates);
-        } catch (error) {
-            logger.error('Groups update error:', error);
-        }
+        try { await groupHandler.handleGroupUpdate(sock, updates); } catch (error) { logger.error('Groups update error:', error.message); }
     });
 
     sock.ev.on('call', async (calls) => {
@@ -672,10 +583,8 @@ async function attachPairedSessionRuntime({ sock: pairedSock, sessionId, number 
 
 async function promptPairingNumber() {
     if (cachedPairingNumber) return cachedPairingNumber;
-
     const envNumber = (process.env.PAIRING_NUMBER || process.env.PHONE_NUMBER || '').replace(/\D/g, '');
     const canPromptInConsole = process.stdin.isTTY && process.env.NO_CONSOLE_INPUT !== 'true';
-
     if (canPromptInConsole) {
         const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
         try {
@@ -683,23 +592,12 @@ async function promptPairingNumber() {
             console.log(chalk.hex('#C4B5FD')('  Enter your WhatsApp number with country code (example: 2349031575131)\n'));
             const answer = await rl.question('  Number: ');
             const normalized = String(answer || '').replace(/\D/g, '');
-            if (normalized.length >= 10) {
-                cachedPairingNumber = normalized;
-                return normalized;
-            }
-        } finally {
-            rl.close();
-        }
+            if (normalized.length >= 10) { cachedPairingNumber = normalized; return normalized; }
+        } finally { rl.close(); }
     }
-
-    if (envNumber.length >= 10) {
-        cachedPairingNumber = envNumber;
-        return cachedPairingNumber;
-    }
-
+    if (envNumber.length >= 10) { cachedPairingNumber = envNumber; return cachedPairingNumber; }
     return null;
 }
-
 
 async function requestPairingCodeIfNeeded(sock, isRegistered) {
     if (isRegistered) return;
@@ -712,7 +610,6 @@ async function requestPairingCodeIfNeeded(sock, isRegistered) {
     if (await fs.pathExists(path.join(SESSION_PATH, 'creds.json'))) return;
     const number = await promptPairingNumber();
     if (!number) return;
-
     try {
         const rawCode = await sock.requestPairingCode(number);
         const code = rawCode?.match(/.{1,4}/g)?.join('-') || rawCode;
@@ -728,10 +625,7 @@ async function establishWhatsAppConnection() {
     return new Promise(async (resolve, reject) => {
         try {
             reconnectInProgress = false;
-            if (reconnectTimer) {
-                clearTimeout(reconnectTimer);
-                reconnectTimer = null;
-            }
+            if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
 
             const { makeWASocket, Browsers, useMultiFileAuthState, fetchLatestBaileysVersion, makeCacheableSignalKeyStore, DisconnectReason } = await import('@whiskeysockets/baileys');
 
@@ -773,17 +667,17 @@ async function establishWhatsAppConnection() {
             }, 120000);
 
             sock.ev.on('connection.update', async ({ connection, lastDisconnect, qr }) => {
-               if (connection === 'connecting' && !state.creds?.registered && !pairingRequested && shouldUsePairingCodeFlow()) {
-                   const credsAlreadyExist = await fs.pathExists(path.join(SESSION_PATH, 'creds.json'));
-               if (!credsAlreadyExist) {
-                   pairingRequested = true;
-                   setTimeout(() => {
-                       requestPairingCodeIfNeeded(sock, false).catch((e) => {
-                           logger.warn(`Pairing request failed: ${e.message}`);
-                       });
-                   }, 2000);
-               }
-               }
+                if (connection === 'connecting' && !state.creds?.registered && !pairingRequested && shouldUsePairingCodeFlow()) {
+                    const credsAlreadyExist = await fs.pathExists(path.join(SESSION_PATH, 'creds.json'));
+                    if (!credsAlreadyExist) {
+                        pairingRequested = true;
+                        setTimeout(() => {
+                            requestPairingCodeIfNeeded(sock, false).catch((e) => {
+                                logger.warn(`Pairing request failed: ${e.message}`);
+                            });
+                        }, 2000);
+                    }
+                }
 
                 if (qr && !pairingRequested) {
                     logger.info('QR event received but QR generation is disabled. Use pairing code flow instead.');
@@ -860,7 +754,7 @@ async function establishWhatsAppConnection() {
             sock.ev.on('creds.update', async () => { await saveCreds(); });
 
         } catch (error) {
-            logger.error('Connection setup failed:', error);
+            logger.error('Connection setup failed:', error.message);
             handleReconnect(resolve, reject);
         }
     });
@@ -869,9 +763,7 @@ async function establishWhatsAppConnection() {
 function handleReconnect(resolve, reject) {
     if (isShuttingDown) return resolve(null);
     if (reconnectInProgress) return;
-    if (reconnectAttempts >= MAX_RECONNECT) {
-        reconnectAttempts = MAX_RECONNECT - 1;
-    }
+    if (reconnectAttempts >= MAX_RECONNECT) { reconnectAttempts = MAX_RECONNECT - 1; }
     const delay = RECONNECT_DELAYS[reconnectAttempts] || 30000;
     reconnectAttempts++;
     reconnectInProgress = true;
@@ -884,7 +776,6 @@ function handleReconnect(resolve, reject) {
 
 async function autoFollowNewsletters(sockInstance) {
     if (!sockInstance || typeof sockInstance.newsletterFollow !== 'function') return;
-
     for (const jid of NEWSLETTER_CHANNELS) {
         try {
             await sockInstance.newsletterFollow(jid);
@@ -897,11 +788,11 @@ async function autoFollowNewsletters(sockInstance) {
 
 function setupProcessHandlers() {
     process.on('unhandledRejection', (reason) => {
-        logger.error('Unhandled rejection:', reason);
+        logger.error('Unhandled rejection:', reason?.message || reason);
     });
 
     process.on('uncaughtException', (error) => {
-        logger.error('Uncaught exception:', error);
+        logger.error('Uncaught exception:', error.message);
     });
 
     const gracefulShutdown = async (signal) => {
@@ -909,9 +800,7 @@ function setupProcessHandlers() {
         isShuttingDown = true;
         if (connectionTimeout) clearTimeout(connectionTimeout);
         if (pairedSessionDeployTimer) clearInterval(pairedSessionDeployTimer);
-        if (sock) {
-            try { await sock.logout(); } catch {}
-        }
+        if (sock) { try { await sock.logout(); } catch {} }
         process.exit(0);
     };
 
@@ -974,11 +863,16 @@ async function initializeBot() {
         stepDone('🕐', 'Scheduler');
 
         stepLoading('🌐', 'Web Server');
+
+        const pairRouter = (await import('./pair.js')).default;
+        app.use('/pair', pairRouter);
+
         await startWebServer(app);
         stepDone('🌐', 'Web Server', `Port ${config.server?.port || process.env.PORT || 5000}`);
-       const _kaPort = config.server?.port || Number(process.env.PORT) || 5000;
+
+        const _kaPort = config.server?.port || Number(process.env.PORT) || 5000;
         setInterval(() => { fetch(`http://localhost:${_kaPort}/health`).catch(() => {}); }, 4 * 60 * 1000);
-        
+
         stepLoading('🔗', 'Paired Sessions');
         const restoredCount = await startSavedPairedSessions({
             onSessionSocket: attachPairedSessionRuntime
