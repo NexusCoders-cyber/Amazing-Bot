@@ -11,6 +11,7 @@ import { isTopOwner } from '../utils/privilegedUsers.js';
 import { initWhitelist, isWhitelisted } from '../commands/owner/whitelist.js';
 import { lidPhoneCache } from '../utils/lidCache.js';
 import { collectSticker } from '../utils/stickerVault.js';
+import { isUserBlocked } from '../commands/owner/block.js';
 
 let autoDownloadHandler = null;
 
@@ -167,9 +168,7 @@ async function resolveSenderPhone(sock, groupJid, rawParticipant) {
 }
 
 function resolvePrivateSenderPhone(sock, fromMe, remoteJid, userJid) {
-    if (fromMe) {
-        return getBotPhone(sock);
-    }
+    if (fromMe) return getBotPhone(sock);
     if (userJid && !isLid(userJid)) {
         const n = stripJid(userJid);
         if (n && n.length >= 7) return n;
@@ -196,11 +195,9 @@ async function isOwner(senderPhone, message, sock) {
         if (botNum) nums.add(botNum);
     }
     const remoteJid = message?.key?.remoteJid || '';
-    if (remoteJid && !remoteJid.endsWith('@g.us')) {
-        if (!isLid(remoteJid)) {
-            const n = stripJid(remoteJid);
-            if (n && n.length >= 7) nums.add(n);
-        }
+    if (remoteJid && !remoteJid.endsWith('@g.us') && !isLid(remoteJid)) {
+        const n = stripJid(remoteJid);
+        if (n && n.length >= 7) nums.add(n);
     }
     const participant = message?.key?.participant || '';
     if (participant && !isLid(participant)) {
@@ -220,11 +217,9 @@ async function isSudo(senderPhone, message, sock) {
     if (senderPhone && senderPhone.length >= 7) nums.add(senderPhone);
     for (const n of collectPhoneCandidatesFromMessage(message)) nums.add(n);
     const remoteJid = message?.key?.remoteJid || '';
-    if (remoteJid && !remoteJid.endsWith('@g.us')) {
-        if (!isLid(remoteJid)) {
-            const n = stripJid(remoteJid);
-            if (n && n.length >= 7) nums.add(n);
-        }
+    if (remoteJid && !remoteJid.endsWith('@g.us') && !isLid(remoteJid)) {
+        const n = stripJid(remoteJid);
+        if (n && n.length >= 7) nums.add(n);
     }
     for (const n of nums) {
         if (await isSudoForSession(sock, n)) return true;
@@ -449,6 +444,14 @@ class MessageHandler {
             const isSudoUser = await isSudo(senderPhone, message, sock);
             const sessionControl = await getSessionControl(sock);
 
+            // Check if user is globally blocked by owner (skip for owners/sudo)
+            if (!fromMe && !isOwnerUser && !isSudoUser) {
+                try {
+                    const blocked = await isUserBlocked(senderJid);
+                    if (blocked) return;
+                } catch {}
+            }
+
             if (config.autoRead && !fromMe) {
                 try { await sock.readMessages([message.key]); } catch {}
             }
@@ -575,11 +578,11 @@ class MessageHandler {
                 this.stopRecording(from);
                 if (isPrefixed) {
                     const suggestions = commandHandler.searchCommands(commandName);
-                    let response = 'Unknown command.';
+                    let response = `❓ Unknown command: *${commandName}*`;
                     if (suggestions?.length > 0) {
-                        response += `\n\nDid you mean:\n${suggestions.slice(0, 3).map(c => `${activePrefix}${c.name}`).join('\n')}`;
+                        response += `\n\nDid you mean?\n${suggestions.slice(0, 3).map(c => `• ${activePrefix}${c.name}`).join('\n')}`;
                     }
-                    response += `\n\nTry ${activePrefix}help`;
+                    response += `\n\nType ${activePrefix}help to see all commands.`;
                     await sock.sendMessage(from, { text: response }, { quoted: message });
                 }
                 return;
@@ -590,7 +593,7 @@ class MessageHandler {
             } catch (error) {
                 logger.error(`Command ${commandName} failed:`, error);
                 await sock.sendMessage(from, {
-                    text: `❌ Error executing ${commandName}: ${error.message}`
+                    text: `❌ Error: ${error.message}`
                 }, { quoted: message });
             } finally {
                 this.stopTyping(from);
