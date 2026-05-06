@@ -1,19 +1,18 @@
 import NodeCache from 'node-cache';
-import Redis from 'redis';
 import config from '../config.js';
 import logger from './logger.js';
 
 class CacheManager {
     constructor() {
         this.nodeCache = new NodeCache({
-            stdTTL: config.performance.cacheTTL || 3600,
-            maxKeys: config.performance.cacheSize || 1000,
+            stdTTL: config.performance?.cacheTTL || 3600,
+            maxKeys: config.performance?.cacheSize || 1000,
             checkperiod: 120,
             useClones: false
         });
-        
+
         this.redisClient = null;
-        this.useRedis = config.redis.enabled;
+        this.useRedis = false;
         this.isInitialized = false;
         this.stats = {
             hits: 0,
@@ -25,15 +24,8 @@ class CacheManager {
 
     async initializeCache() {
         if (this.isInitialized) return;
-
         try {
-            if (this.useRedis) {
-                await this.connectRedis();
-            }
-            
             this.setupEventListeners();
-            this.startStatsTracking();
-            
             this.isInitialized = true;
             logger.info('Cache system initialized successfully');
         } catch (error) {
@@ -42,89 +34,21 @@ class CacheManager {
         }
     }
 
-    async connectRedis() {
-        try {
-            this.redisClient = Redis.createClient(config.redis.url, config.redis.options);
-            
-            this.redisClient.on('error', (error) => {
-                logger.error('Redis connection error:', error);
-                this.useRedis = false;
-            });
-            
-            this.redisClient.on('connect', () => {
-                logger.info('Connected to Redis cache');
-            });
-            
-            this.redisClient.on('disconnect', () => {
-                logger.warn('Redis disconnected, falling back to NodeCache');
-            });
-            
-            await this.redisClient.connect();
-            
-        } catch (error) {
-            logger.warn('Redis connection failed, using NodeCache only:', error);
-            this.useRedis = false;
-        }
-    }
-
     setupEventListeners() {
-        this.nodeCache.on('set', (key, value) => {
-            this.stats.sets++;
-        });
-
-        this.nodeCache.on('del', (key, value) => {
-            this.stats.deletes++;
-        });
-
-        this.nodeCache.on('expired', (key, value) => {
+        this.nodeCache.on('set', () => { this.stats.sets++; });
+        this.nodeCache.on('del', () => { this.stats.deletes++; });
+        this.nodeCache.on('expired', (key) => {
             logger.debug(`Cache key expired: ${key}`);
         });
-
-        this.nodeCache.on('flush', () => {
-            logger.info('Cache flushed');
-        });
-    }
-
-    startStatsTracking() {
-        setInterval(() => {
-            if (String(process.env.LOG_LEVEL || '').toLowerCase() !== 'verbose') return;
-            const nodeStats = this.nodeCache.getStats();
-            logger.verbose('Cache stats:', {
-                hits: this.stats.hits,
-                misses: this.stats.misses,
-                sets: this.stats.sets,
-                deletes: this.stats.deletes,
-                keys: nodeStats.keys,
-                ksize: nodeStats.ksize,
-                vsize: nodeStats.vsize
-            });
-        }, 300000);
     }
 
     async get(key) {
         try {
-            let value = null;
-            
-            if (this.useRedis && this.redisClient) {
-                try {
-                    const redisValue = await this.redisClient.get(key);
-                    if (redisValue !== null) {
-                        value = JSON.parse(redisValue);
-                        this.stats.hits++;
-                        return value;
-                    }
-                } catch (error) {
-                    logger.debug('Redis get error:', error);
-                }
-            }
-            
-            value = this.nodeCache.get(key);
-            
+            const value = this.nodeCache.get(key);
             if (value !== undefined) {
                 this.stats.hits++;
                 return value;
             }
-            
             this.stats.misses++;
             return null;
         } catch (error) {
@@ -136,19 +60,9 @@ class CacheManager {
 
     async set(key, value, ttl = null) {
         try {
-            const expiry = ttl || config.performance.cacheTTL;
-            
-            if (this.useRedis && this.redisClient) {
-                try {
-                    await this.redisClient.setEx(key, expiry, JSON.stringify(value));
-                } catch (error) {
-                    logger.debug('Redis set error:', error);
-                }
-            }
-            
+            const expiry = ttl || config.performance?.cacheTTL || 3600;
             this.nodeCache.set(key, value, expiry);
             this.stats.sets++;
-            
             return true;
         } catch (error) {
             logger.error(`Cache set error for key ${key}:`, error);
@@ -158,19 +72,8 @@ class CacheManager {
 
     async del(key) {
         try {
-            if (this.useRedis && this.redisClient) {
-                try {
-                    await this.redisClient.del(key);
-                } catch (error) {
-                    logger.debug('Redis delete error:', error);
-                }
-            }
-            
             const deleted = this.nodeCache.del(key);
-            if (deleted > 0) {
-                this.stats.deletes++;
-            }
-            
+            if (deleted > 0) this.stats.deletes++;
             return deleted > 0;
         } catch (error) {
             logger.error(`Cache delete error for key ${key}:`, error);
@@ -180,63 +83,28 @@ class CacheManager {
 
     async has(key) {
         try {
-            if (this.useRedis && this.redisClient) {
-                try {
-                    const exists = await this.redisClient.exists(key);
-                    if (exists) return true;
-                } catch (error) {
-                    logger.debug('Redis exists error:', error);
-                }
-            }
-            
             return this.nodeCache.has(key);
         } catch (error) {
-            logger.error(`Cache has error for key ${key}:`, error);
             return false;
         }
     }
 
     async keys(pattern = '*') {
         try {
-            let allKeys = [];
-            
-            if (this.useRedis && this.redisClient) {
-                try {
-                    const redisKeys = await this.redisClient.keys(pattern);
-                    allKeys.push(...redisKeys);
-                } catch (error) {
-                    logger.debug('Redis keys error:', error);
-                }
-            }
-            
             const nodeKeys = this.nodeCache.keys();
-            if (pattern === '*') {
-                allKeys.push(...nodeKeys);
-            } else {
-                const regex = new RegExp(pattern.replace(/\*/g, '.*'));
-                allKeys.push(...nodeKeys.filter(key => regex.test(key)));
-            }
-            
-            return [...new Set(allKeys)];
+            if (pattern === '*') return nodeKeys;
+            const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
+            return nodeKeys.filter(key => regex.test(key));
         } catch (error) {
-            logger.error(`Cache keys error for pattern ${pattern}:`, error);
+            logger.error(`Cache keys error:`, error);
             return [];
         }
     }
 
     async flush() {
         try {
-            if (this.useRedis && this.redisClient) {
-                try {
-                    await this.redisClient.flushAll();
-                } catch (error) {
-                    logger.debug('Redis flush error:', error);
-                }
-            }
-            
             this.nodeCache.flushAll();
             logger.info('Cache flushed successfully');
-            
             return true;
         } catch (error) {
             logger.error('Cache flush error:', error);
@@ -247,140 +115,99 @@ class CacheManager {
     async flushByPattern(pattern) {
         try {
             const keys = await this.keys(pattern);
-            
-            for (const key of keys) {
-                await this.del(key);
-            }
-            
-            logger.info(`Flushed ${keys.length} keys matching pattern: ${pattern}`);
+            for (const key of keys) await this.del(key);
             return keys.length;
         } catch (error) {
-            logger.error(`Cache flush by pattern error for ${pattern}:`, error);
+            logger.error(`Cache flush by pattern error:`, error);
             return 0;
         }
     }
 
     async mget(keys) {
-        try {
-            const results = {};
-            
-            for (const key of keys) {
-                results[key] = await this.get(key);
-            }
-            
-            return results;
-        } catch (error) {
-            logger.error('Cache mget error:', error);
-            return {};
-        }
+        const results = {};
+        for (const key of keys) results[key] = await this.get(key);
+        return results;
     }
 
     async mset(keyValuePairs, ttl = null) {
-        try {
-            const results = {};
-            
-            for (const [key, value] of Object.entries(keyValuePairs)) {
-                results[key] = await this.set(key, value, ttl);
-            }
-            
-            return results;
-        } catch (error) {
-            logger.error('Cache mset error:', error);
-            return {};
+        const results = {};
+        for (const [key, value] of Object.entries(keyValuePairs)) {
+            results[key] = await this.set(key, value, ttl);
         }
+        return results;
     }
 
     async increment(key, value = 1, ttl = null) {
-        try {
-            const currentValue = (await this.get(key)) || 0;
-            const newValue = currentValue + value;
-            
-            await this.set(key, newValue, ttl);
-            return newValue;
-        } catch (error) {
-            logger.error(`Cache increment error for key ${key}:`, error);
-            return null;
-        }
+        const current = (await this.get(key)) || 0;
+        const newValue = current + value;
+        await this.set(key, newValue, ttl);
+        return newValue;
     }
 
     async decrement(key, value = 1, ttl = null) {
-        try {
-            const currentValue = (await this.get(key)) || 0;
-            const newValue = Math.max(0, currentValue - value);
-            
-            await this.set(key, newValue, ttl);
-            return newValue;
-        } catch (error) {
-            logger.error(`Cache decrement error for key ${key}:`, error);
-            return null;
-        }
+        const current = (await this.get(key)) || 0;
+        const newValue = Math.max(0, current - value);
+        await this.set(key, newValue, ttl);
+        return newValue;
     }
 
     async getStats() {
-        try {
-            const nodeStats = this.nodeCache.getStats();
-            const redisInfo = this.useRedis && this.redisClient ? 
-                await this.redisClient.info('memory') : null;
-            
-            return {
-                nodeCache: {
-                    hits: this.stats.hits,
-                    misses: this.stats.misses,
-                    sets: this.stats.sets,
-                    deletes: this.stats.deletes,
-                    hitRate: this.stats.hits / (this.stats.hits + this.stats.misses) || 0,
-                    keys: nodeStats.keys,
-                    ksize: nodeStats.ksize,
-                    vsize: nodeStats.vsize
-                },
-                redis: {
-                    enabled: this.useRedis,
-                    connected: this.redisClient?.isReady || false,
-                    info: redisInfo
-                }
-            };
-        } catch (error) {
-            logger.error('Cache stats error:', error);
-            return null;
-        }
+        const nodeStats = this.nodeCache.getStats();
+        const total = this.stats.hits + this.stats.misses;
+        return {
+            nodeCache: {
+                hits: this.stats.hits,
+                misses: this.stats.misses,
+                sets: this.stats.sets,
+                deletes: this.stats.deletes,
+                hitRate: total > 0 ? (this.stats.hits / total) : 0,
+                keys: nodeStats.keys,
+                ksize: nodeStats.ksize,
+                vsize: nodeStats.vsize
+            },
+            redis: { enabled: false, connected: false }
+        };
     }
 
     async cleanup() {
         try {
             const keys = this.nodeCache.keys();
             const now = Date.now();
-            let cleanedCount = 0;
-            
+            let cleaned = 0;
             for (const key of keys) {
                 const ttl = this.nodeCache.getTtl(key);
                 if (ttl && ttl < now) {
                     this.nodeCache.del(key);
-                    cleanedCount++;
+                    cleaned++;
                 }
             }
-            
-            logger.info(`Cache cleanup completed: ${cleanedCount} expired keys removed`);
-            return cleanedCount;
+            return cleaned;
         } catch (error) {
-            logger.error('Cache cleanup error:', error);
             return 0;
         }
     }
 
-    async warmup(data) {
+    async isHealthy() {
         try {
-            const warmupCount = Object.keys(data).length;
-            
-            for (const [key, value] of Object.entries(data)) {
-                await this.set(key, value);
-            }
-            
-            logger.info(`Cache warmed up with ${warmupCount} entries`);
-            return warmupCount;
-        } catch (error) {
-            logger.error('Cache warmup error:', error);
-            return 0;
+            const testKey = '_health_' + Date.now();
+            await this.set(testKey, 1, 5);
+            const val = await this.get(testKey);
+            await this.del(testKey);
+            return val === 1;
+        } catch {
+            return false;
         }
+    }
+
+    async getOrSet(key, factory, ttl = null) {
+        let value = await this.get(key);
+        if (value === null) {
+            value = await factory();
+            if (value !== null && value !== undefined) {
+                await this.set(key, value, ttl);
+            }
+        }
+        return value;
     }
 
     createNamespace(prefix) {
@@ -396,67 +223,9 @@ class CacheManager {
         };
     }
 
-    async getOrSet(key, factory, ttl = null) {
-        try {
-            let value = await this.get(key);
-            
-            if (value === null) {
-                value = await factory();
-                if (value !== null && value !== undefined) {
-                    await this.set(key, value, ttl);
-                }
-            }
-            
-            return value;
-        } catch (error) {
-            logger.error(`Cache getOrSet error for key ${key}:`, error);
-            return null;
-        }
-    }
-
-    async getSize() {
-        try {
-            const stats = await this.getStats();
-            return {
-                keys: stats.nodeCache.keys,
-                memoryUsage: stats.nodeCache.vsize + stats.nodeCache.ksize
-            };
-        } catch (error) {
-            logger.error('Cache getSize error:', error);
-            return { keys: 0, memoryUsage: 0 };
-        }
-    }
-
-    async isHealthy() {
-        try {
-            const testKey = '_health_check';
-            const testValue = Date.now();
-            
-            await this.set(testKey, testValue, 10);
-            const retrieved = await this.get(testKey);
-            await this.del(testKey);
-            
-            return retrieved === testValue;
-        } catch (error) {
-            logger.error('Cache health check failed:', error);
-            return false;
-        }
-    }
-
     async disconnect() {
-        try {
-            if (this.redisClient) {
-                await this.redisClient.quit();
-                this.redisClient = null;
-            }
-            
-            this.nodeCache.flushAll();
-            this.isInitialized = false;
-            
-            logger.info('Cache disconnected successfully');
-        } catch (error) {
-            logger.error('Cache disconnect error:', error);
-        }
+        this.nodeCache.flushAll();
+        this.isInitialized = false;
     }
 }
 
@@ -482,3 +251,7 @@ export const getStats = () => cacheManager.getStats();
 export const cleanup = () => cacheManager.cleanup();
 export const isHealthy = () => cacheManager.isHealthy();
 export const getOrSet = (key, factory, ttl) => cacheManager.getOrSet(key, factory, ttl);
+
+// Aliases used by analyticsService and scheduler
+export const getCache = (key) => cacheManager.get(key);
+export const setCache = (key, value, ttl) => cacheManager.set(key, value, ttl);
