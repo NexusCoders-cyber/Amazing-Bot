@@ -22,14 +22,11 @@ class TaskScheduler extends EventEmitter {
 
     async startScheduler() {
         if (this.isInitialized) return;
-
         try {
             await this.initializeDefaultTasks();
             await this.loadSavedTasks();
-            
             this.setupEventListeners();
             this.startStatsTracking();
-            
             this.isInitialized = true;
             logger.info(`Task scheduler initialized with ${this.tasks.size} tasks`);
         } catch (error) {
@@ -122,11 +119,9 @@ class TaskScheduler extends EventEmitter {
     async loadSavedTasks() {
         try {
             const savedTasks = await cache.get('scheduled_tasks') || [];
-            
             for (const taskData of savedTasks) {
                 this.addTask(taskData);
             }
-
             logger.info(`Loaded ${savedTasks.length} saved tasks`);
         } catch (error) {
             logger.error('Failed to load saved tasks:', error);
@@ -142,7 +137,6 @@ class TaskScheduler extends EventEmitter {
                 enabled: task.enabled,
                 taskString: task.task ? task.task.toString() : null
             }));
-
             await cache.set('scheduled_tasks', tasksData, 86400);
             logger.debug('Tasks saved to cache');
         } catch (error) {
@@ -160,7 +154,6 @@ class TaskScheduler extends EventEmitter {
             this.runningTasks.delete(taskName);
             this.stats.completedTasks++;
             this.stats.activeTasks = this.runningTasks.size;
-            
             this.taskHistory.push({
                 name: taskName,
                 status: 'completed',
@@ -173,7 +166,6 @@ class TaskScheduler extends EventEmitter {
             this.runningTasks.delete(taskName);
             this.stats.failedTasks++;
             this.stats.activeTasks = this.runningTasks.size;
-            
             this.taskHistory.push({
                 name: taskName,
                 status: 'failed',
@@ -197,18 +189,11 @@ class TaskScheduler extends EventEmitter {
     addTask(taskData) {
         try {
             const { name, schedule, description, enabled = true, task } = taskData;
-            
-            if (!name || !schedule) {
-                throw new Error('Task name and schedule are required');
-            }
 
-            if (!cron.validate(schedule)) {
-                throw new Error(`Invalid cron schedule: ${schedule}`);
-            }
+            if (!name || !schedule) throw new Error('Task name and schedule are required');
+            if (!cron.validate(schedule)) throw new Error(`Invalid cron schedule: ${schedule}`);
 
-            if (this.tasks.has(name)) {
-                this.removeTask(name);
-            }
+            if (this.tasks.has(name)) this.removeTask(name);
 
             const taskInstance = {
                 name,
@@ -229,17 +214,14 @@ class TaskScheduler extends EventEmitter {
                     scheduled: false,
                     timezone: config.timezone || 'UTC'
                 });
-
                 taskInstance.cronJob.start();
                 taskInstance.nextRun = this.getNextRunTime(schedule);
             }
 
             this.tasks.set(name, taskInstance);
             this.stats.totalTasks = this.tasks.size;
-            
             logger.info(`Added scheduled task: ${name} (${schedule})`);
             this.emit('task:added', name, taskInstance);
-            
             return true;
         } catch (error) {
             logger.error(`Failed to add task ${taskData.name}:`, error);
@@ -250,97 +232,67 @@ class TaskScheduler extends EventEmitter {
     removeTask(name) {
         const task = this.tasks.get(name);
         if (!task) return false;
-
         if (task.cronJob) {
             task.cronJob.stop();
             task.cronJob.destroy();
         }
-
         this.tasks.delete(name);
         this.runningTasks.delete(name);
         this.stats.totalTasks = this.tasks.size;
         this.stats.activeTasks = this.runningTasks.size;
-
         logger.info(`Removed scheduled task: ${name}`);
         this.emit('task:removed', name);
-        
         return true;
     }
 
     enableTask(name) {
         const task = this.tasks.get(name);
         if (!task) return false;
-
         if (task.enabled) return true;
-
         task.enabled = true;
-        
         if (!task.cronJob) {
             task.cronJob = cron.schedule(task.schedule, async () => {
                 await this.executeTask(name);
-            }, {
-                scheduled: false,
-                timezone: config.timezone || 'UTC'
-            });
+            }, { scheduled: false, timezone: config.timezone || 'UTC' });
         }
-
         task.cronJob.start();
         task.nextRun = this.getNextRunTime(task.schedule);
-
         logger.info(`Enabled task: ${name}`);
         this.emit('task:enabled', name);
-        
         return true;
     }
 
     disableTask(name) {
         const task = this.tasks.get(name);
         if (!task) return false;
-
         task.enabled = false;
-        
-        if (task.cronJob) {
-            task.cronJob.stop();
-        }
-
+        if (task.cronJob) task.cronJob.stop();
         task.nextRun = null;
-
         logger.info(`Disabled task: ${name}`);
         this.emit('task:disabled', name);
-        
         return true;
     }
 
     async executeTask(name, force = false) {
         const task = this.tasks.get(name);
         if (!task) return false;
-
-        if (!force && (!task.enabled || this.runningTasks.has(name))) {
-            return false;
-        }
+        if (!force && (!task.enabled || this.runningTasks.has(name))) return false;
 
         const startTime = Date.now();
-        
         try {
             logger.info(`Starting task: ${name}`);
             this.emit('task:started', name);
-
             await task.task();
-
             const duration = Date.now() - startTime;
             task.lastRun = new Date();
             task.nextRun = this.getNextRunTime(task.schedule);
-
             logger.info(`Task completed: ${name} (${duration}ms)`);
             this.emit('task:completed', name, duration);
-            
             return true;
         } catch (error) {
             const duration = Date.now() - startTime;
-            
             logger.error(`Task failed: ${name} (${duration}ms):`, error);
             this.emit('task:failed', name, error);
-            
             return false;
         }
     }
@@ -349,32 +301,20 @@ class TaskScheduler extends EventEmitter {
         try {
             const task = cron.schedule(schedule, () => {}, { scheduled: false });
             return task.nextDate();
-        } catch (error) {
+        } catch {
             return null;
         }
     }
 
-    getTask(name) {
-        return this.tasks.get(name);
-    }
-
-    getAllTasks() {
-        return Array.from(this.tasks.values());
-    }
-
-    getActiveTasks() {
-        return Array.from(this.tasks.values()).filter(task => task.enabled);
-    }
-
+    getTask(name) { return this.tasks.get(name); }
+    getAllTasks() { return Array.from(this.tasks.values()); }
+    getActiveTasks() { return Array.from(this.tasks.values()).filter(task => task.enabled); }
     getTaskHistory(limit = 50) {
-        return this.taskHistory
-            .sort((a, b) => b.timestamp - a.timestamp)
-            .slice(0, limit);
+        return this.taskHistory.sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);
     }
 
     getTaskStats() {
         const tasks = Array.from(this.tasks.values());
-        
         return {
             ...this.stats,
             enabledTasks: tasks.filter(t => t.enabled).length,
@@ -387,13 +327,10 @@ class TaskScheduler extends EventEmitter {
         try {
             const { getUserStats } = await import('../models/User.js');
             const { getGroupStats } = await import('../models/Group.js');
-            
             const userStats = await getUserStats();
             const groupStats = await getGroupStats();
-            
             await cache.set('daily_user_stats', userStats, 86400);
             await cache.set('daily_group_stats', groupStats, 86400);
-            
             logger.info('User statistics updated');
         } catch (error) {
             logger.error('Failed to update user stats:', error);
@@ -407,14 +344,18 @@ class TaskScheduler extends EventEmitter {
                 return;
             }
 
-            const { User } = await import('../models/User.js');
+            const { User, updateUser } = await import('../models/User.js');
             const expiredUsers = await User.find({
                 isPremium: true,
                 premiumUntil: { $lte: new Date() }
             });
 
             for (const user of expiredUsers) {
-                await user.removePremium();
+                await updateUser(user.jid, {
+                    isPremium: false,
+                    premiumUntil: null,
+                    premiumType: null
+                });
                 logger.info(`Premium expired for user: ${user.jid}`);
 
                 if (global.sock && config.notifications.updates) {
@@ -422,8 +363,8 @@ class TaskScheduler extends EventEmitter {
                         await global.sock.sendMessage(user.jid, {
                             text: `⏰ *Premium Subscription Expired*\n\nYour premium subscription has expired.\nThank you for your support!\n\nUpgrade again with the premium command.`
                         });
-                    } catch (error) {
-                        logger.debug(`Failed to notify user ${user.jid}:`, error);
+                    } catch {
+                        logger.debug(`Failed to notify user ${user.jid} about premium expiry`);
                     }
                 }
             }
@@ -441,7 +382,7 @@ class TaskScheduler extends EventEmitter {
             const taskStats = this.getTaskStats();
             const userStats = await cache.get('daily_user_stats') || {};
             const groupStats = await cache.get('daily_group_stats') || {};
-            
+
             const statsMessage = `📊 *Daily Bot Statistics*
 
 👥 *Users:*
@@ -453,7 +394,6 @@ class TaskScheduler extends EventEmitter {
 👨‍👩‍👧‍👦 *Groups:*
 ├ Total: ${groupStats.total || 0}
 ├ Active: ${groupStats.active || 0}
-├ With Welcome: ${groupStats.withWelcome || 0}
 ╰ Banned: ${groupStats.banned || 0}
 
 ⚙️ *Tasks:*
@@ -477,7 +417,6 @@ _Automated daily report_`;
 
     scheduleOneTime(name, delay, task) {
         const executeAt = new Date(Date.now() + delay);
-        
         setTimeout(async () => {
             try {
                 logger.info(`Executing one-time task: ${name}`);
@@ -487,13 +426,11 @@ _Automated daily report_`;
                 logger.error(`One-time task failed: ${name}:`, error);
             }
         }, delay);
-
         logger.info(`Scheduled one-time task: ${name} at ${executeAt.toLocaleString()}`);
     }
 
     generateTaskList() {
         const tasks = this.getAllTasks();
-        
         let list = `⏰ *Task Scheduler*\n\n`;
         list += `📊 *Statistics:*\n`;
         list += `├ Total Tasks: ${this.stats.totalTasks}\n`;
@@ -501,18 +438,15 @@ _Automated daily report_`;
         list += `├ Running: ${this.stats.activeTasks}\n`;
         list += `├ Completed: ${this.stats.completedTasks}\n`;
         list += `╰ Failed: ${this.stats.failedTasks}\n\n`;
-
         list += `📋 *Task List:*\n`;
         tasks.forEach(task => {
             const status = task.enabled ? '🟢' : '🔴';
             const nextRun = task.nextRun ? task.nextRun.toLocaleString() : 'Never';
-            
             list += `${status} *${task.name}*\n`;
             list += `   Schedule: ${task.schedule}\n`;
             list += `   Next Run: ${nextRun}\n`;
             list += `   ${task.description}\n\n`;
         });
-
         return list;
     }
 
@@ -524,13 +458,10 @@ _Automated daily report_`;
                     task.cronJob.destroy();
                 }
             }
-
             await this.saveTasks();
-            
             this.tasks.clear();
             this.runningTasks.clear();
             this.isInitialized = false;
-
             logger.info('Task scheduler stopped');
         } catch (error) {
             logger.error('Failed to stop scheduler:', error);
