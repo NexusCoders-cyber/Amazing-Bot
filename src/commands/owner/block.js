@@ -1,139 +1,106 @@
-import formatResponse from '../../utils/formatUtils.js';
+import fs from 'fs-extra';
+import path from 'path';
+
+const BLOCK_FILE = path.join(process.cwd(), 'data', 'bot_blocked.json');
+
+async function loadBlocked() {
+    try {
+        await fs.ensureDir(path.dirname(BLOCK_FILE));
+        if (!await fs.pathExists(BLOCK_FILE)) return {};
+        return await fs.readJSON(BLOCK_FILE);
+    } catch {
+        return {};
+    }
+}
+
+async function saveBlocked(data) {
+    try {
+        await fs.ensureDir(path.dirname(BLOCK_FILE));
+        await fs.writeJSON(BLOCK_FILE, data, { spaces: 2 });
+    } catch {}
+}
+
+export async function isUserBlocked(jid) {
+    const data = await loadBlocked();
+    const num = jid.split('@')[0].split(':')[0];
+    return !!data[num];
+}
 
 export default {
     name: 'block',
-    aliases: ['ban', 'blacklist'],
+    aliases: ['blacklist'],
     category: 'owner',
     description: 'Block a user from using the bot',
     usage: 'block @user [reason] OR reply to message',
     cooldown: 5,
     permissions: ['owner'],
     ownerOnly: true,
-    args: true,
-    minArgs: 1,
+    args: false,
+    minArgs: 0,
 
     async execute({ sock, message, args, from, sender }) {
         try {
             let targetUser = null;
-            let reason = args.slice(1).join(' ') || 'Blocked by owner';
-            
-            if (message.message?.extendedTextMessage?.contextInfo?.quotedMessage) {
-                targetUser = message.message.extendedTextMessage.contextInfo.participant;
-            } else if (message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0]) {
-                targetUser = message.message.extendedTextMessage.contextInfo.mentionedJid[0];
-            } else if (args[0].includes('@')) {
-                targetUser = args[0].replace('@', '') + '@s.whatsapp.net';
-            } else {
-                return sock.sendMessage(from, {
-                    text: formatResponse.error('INVALID TARGET',
-                        'Please mention a user or reply to their message',
-                        'Usage: block @user [reason] OR reply to message and type: block [reason]')
-                }, { quoted: message });
-            }
-            
-            if (targetUser === sender) {
-                return sock.sendMessage(from, {
-                    text: formatResponse.error('INVALID ACTION',
-                        'You cannot block yourself',
-                        'This action is not permitted for security reasons')
-                }, { quoted: message });
-            }
-            
-            const username = targetUser.split('@')[0];
-            const blockData = await this.blockUser(targetUser, reason, sender);
-            
-            if (blockData.alreadyBlocked) {
-                return sock.sendMessage(from, {
-                    text: `╭──⦿【 ℹ️ ALREADY BLOCKED 】
-│
-│ 👤 𝗨𝘀𝗲𝗿: @${username}
-│ 🚫 𝗦𝘁𝗮𝘁𝘂𝘀: Already blocked
-│ 📅 𝗕𝗹𝗼𝗰𝗸𝗲𝗱: ${blockData.blockedSince}
-│ 📝 𝗥𝗲𝗮𝘀𝗼𝗻: ${blockData.originalReason}
-│
-╰────────────⦿`,
-                    contextInfo: { mentionedJid: [targetUser] }
-                }, { quoted: message });
-            }
-            
-            await sock.sendMessage(from, {
-                text: `╭──⦿【 🚫 USER BLOCKED 】
-│
-│ 👤 𝗨𝘀𝗲𝗿: @${username}
-│ 🚫 𝗦𝘁𝗮𝘁𝘂𝘀: Blocked from bot
-│ 📅 𝗗𝗮𝘁𝗲: ${new Date().toLocaleDateString()}
-│ 👮 𝗕𝗹𝗼𝗰𝗸𝗲𝗱 𝗕𝘆: Owner
-│ 📝 𝗥𝗲𝗮𝘀𝗼𝗻: ${reason}
-│ 🆔 𝗕𝗹𝗼𝗰𝗸 𝗜𝗗: ${blockData.blockId}
-│
-│ ⚠️ 𝗥𝗲𝘀𝘁𝗿𝗶𝗰𝘁𝗶𝗼𝗻𝘀:
-│ ✧ All commands disabled
-│ ✧ No bot responses
-│ ✧ Features unavailable
-│ ✧ Auto-response off
-│ ✧ Group interaction blocked
-│
-│ 📊 𝗧𝗼𝘁𝗮𝗹 𝗕𝗹𝗼𝗰𝗸𝗲𝗱: ${blockData.totalBlocked}
-│
-╰────────────⦿
+            const reason = args.filter(a => !a.startsWith('@')).join(' ') || 'Blocked by owner';
 
-💡 User has been notified`,
-                contextInfo: { mentionedJid: [targetUser] }
+            const ctx = message.message?.extendedTextMessage?.contextInfo;
+            if (ctx?.quotedMessage && ctx?.participant) {
+                targetUser = ctx.participant;
+            } else if (ctx?.mentionedJid?.[0]) {
+                targetUser = ctx.mentionedJid[0];
+            } else if (args[0]?.startsWith('@') || args[0]?.match(/^[0-9]+$/)) {
+                const rawNum = args[0].replace('@', '').replace(/[^0-9]/g, '');
+                targetUser = rawNum + '@s.whatsapp.net';
+            }
+
+            if (!targetUser) {
+                return sock.sendMessage(from, {
+                    text: '❌ *No user specified.*\n\nMention a user or reply to their message.\n\nUsage: `block @user [reason]`'
+                }, { quoted: message });
+            }
+
+            const targetNum = targetUser.split('@')[0].split(':')[0];
+            const senderNum = sender.split('@')[0].split(':')[0];
+
+            if (targetNum === senderNum) {
+                return sock.sendMessage(from, {
+                    text: '❌ You cannot block yourself.'
+                }, { quoted: message });
+            }
+
+            const blocked = await loadBlocked();
+
+            if (blocked[targetNum]) {
+                return sock.sendMessage(from, {
+                    text: `ℹ️ *Already Blocked*\n\n@${targetNum} is already blocked.\nReason: ${blocked[targetNum].reason}\nDate: ${blocked[targetNum].blockedAt}`,
+                    mentions: [targetUser]
+                }, { quoted: message });
+            }
+
+            blocked[targetNum] = {
+                jid: targetUser,
+                reason,
+                blockedBy: senderNum,
+                blockedAt: new Date().toLocaleDateString()
+            };
+
+            await saveBlocked(blocked);
+
+            await sock.sendMessage(from, {
+                text: `🚫 *User Blocked*\n\n👤 User: @${targetNum}\n📝 Reason: ${reason}\n📅 Date: ${new Date().toLocaleDateString()}\n\nThis user can no longer use any bot commands.`,
+                mentions: [targetUser]
             }, { quoted: message });
-            
+
             try {
-                await sock.sendMessage(targetUser, {
-                    text: `╭──⦿【 🚫 YOU ARE BLOCKED 】
-│
-│ ⚠️ 𝗬𝗼𝘂 𝗮𝗿𝗲 𝗻𝗼𝘄 𝗯𝗹𝗼𝗰𝗸𝗲𝗱
-│
-│ 📋 𝗗𝗲𝘁𝗮𝗶𝗹𝘀:
-│ ✧ Blocked by: Bot Owner
-│ ✧ Reason: ${reason}
-│ ✧ Date: ${new Date().toLocaleDateString()}
-│ ✧ Block ID: ${blockData.blockId}
-│
-│ 🚫 𝗪𝗵𝗮𝘁 𝘁𝗵𝗶𝘀 𝗺𝗲𝗮𝗻𝘀:
-│ ✧ Cannot use commands
-│ ✧ Bot won't respond
-│ ✧ All features disabled
-│ ✧ Block is permanent
-│
-│ 📞 𝗔𝗽𝗽𝗲𝗮𝗹:
-│ Contact bot owner if this
-│ is a mistake
-│
-╰────────────⦿`
+                await sock.sendMessage(targetUser.replace('@lid', '@s.whatsapp.net'), {
+                    text: `🚫 *You have been blocked from using this bot.*\n\nReason: ${reason}\n\nContact the bot owner if you believe this is a mistake.`
                 });
-            } catch (e) {}
-            
+            } catch {}
+
         } catch (error) {
             await sock.sendMessage(from, {
-                text: formatResponse.error('BLOCK FAILED', error.message,
-                    'Check system logs and try again')
+                text: `❌ Block failed: ${error.message}`
             }, { quoted: message });
         }
-    },
-    
-    async blockUser(userId, reason, blockedBy) {
-        const alreadyBlocked = Math.random() < 0.2;
-        
-        if (alreadyBlocked) {
-            return {
-                alreadyBlocked: true,
-                blockedSince: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-                originalReason: 'Previous violation'
-            };
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        return {
-            alreadyBlocked: false,
-            blockId: 'BLK_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5).toUpperCase(),
-            userId, reason, blockedBy,
-            blockedAt: new Date(),
-            totalBlocked: Math.floor(Math.random() * 50) + 1
-        };
     }
 };
