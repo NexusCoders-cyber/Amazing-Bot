@@ -1,5 +1,6 @@
 import express from 'express';
 import fs from 'fs-extra';
+import path from 'path';
 import pino from 'pino';
 import pn from 'awesome-phonenumber';
 import archiver from 'archiver';
@@ -55,12 +56,10 @@ async function zipAuthDir(dirPath) {
 
 async function waitForFile(filePath, timeoutMs = CREDS_WAIT_TIMEOUT_MS, intervalMs = CREDS_POLL_INTERVAL_MS) {
     const startTime = Date.now();
-
     while (Date.now() - startTime < timeoutMs) {
         if (fs.existsSync(filePath)) return true;
         await delay(intervalMs);
     }
-
     return fs.existsSync(filePath);
 }
 
@@ -73,7 +72,8 @@ router.get('/', async (req, res) => {
     if (!phone.isValid()) return res.status(400).send({ code: 'Invalid phone number.' });
     num = phone.getNumber('e164').replace('+', '');
 
-    const authDir = `./auth_info_baileys/session_${num}`;
+    // FIX: auth directory now lives inside cache/ folder, consistent with main bot
+    const authDir = path.join(process.cwd(), 'cache', 'auth_info_baileys', `session_${num}`);
 
     let pairingCodeSent = false;
     let sessionCompleted = false;
@@ -113,14 +113,15 @@ router.get('/', async (req, res) => {
         if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
             if (!responseSent && !res.headersSent) {
                 responseSent = true;
-                res.status(503).send({ code: 'Connection failed' });
+                res.status(503).send({ code: 'Connection failed after maximum retries' });
             }
             await cleanup('max_reconnects');
             return;
         }
 
         try {
-            if (!fs.existsSync(authDir)) await fs.mkdir(authDir, { recursive: true });
+            await fs.ensureDir(authDir);
+            await fs.ensureDir(path.join(authDir, 'keys'));
 
             const { state, saveCreds } = await useMultiFileAuthState(authDir);
             const { version } = await fetchLatestBaileysVersion();
@@ -172,7 +173,7 @@ router.get('/', async (req, res) => {
                         await delay(POST_CONNECT_SETTLE_MS);
                         await saveCreds();
 
-                        const credsFile = `${authDir}/creds.json`;
+                        const credsFile = path.join(authDir, 'creds.json');
                         const credsReady = await waitForFile(credsFile);
                         if (!credsReady) {
                             throw new Error('creds.json not found after successful link');
@@ -187,28 +188,25 @@ router.get('/', async (req, res) => {
                             responseSent = true;
                             res.send({
                                 code: 'linked',
-                                message: 'WhatsApp linked. Session file is being sent to your WhatsApp chat.'
+                                message: 'WhatsApp linked successfully. Session is being sent to your WhatsApp chat.'
                             });
                         }
 
                         await sock.sendMessage(userJid, {
-                            document: Buffer.from(JSON.stringify({
-                                sessionId,
-                                megaUrl: megaLink
-                            }, null, 2), 'utf8'),
+                            document: Buffer.from(JSON.stringify({ sessionId, megaUrl: megaLink }, null, 2), 'utf8'),
                             fileName: `${num}-session.json`,
                             mimetype: 'application/json',
-                            caption: '✅ Session file generated. Copy `sessionId` into bot SESSION_ID env.'
+                            caption: '✅ Session file generated. Copy `sessionId` into your bot SESSION_ID env variable.'
                         });
 
                         await sock.sendMessage(userJid, {
-                            text: `✅ Session ID:\n${sessionId}`
+                            text: `✅ *Your Session ID:*\n\n\`\`\`${sessionId}\`\`\`\n\nPaste this as SESSION_ID in your .env or deployment config.`
                         });
                     } catch (error) {
                         console.error('❌ Session delivery failed:', error);
                         if (!responseSent && !res.headersSent) {
                             responseSent = true;
-                            res.status(500).send({ code: 'Session send failed', error: error.message });
+                            res.status(500).send({ code: 'Session delivery failed', error: error.message });
                         }
                     } finally {
                         await cleanup('session_complete');
@@ -231,7 +229,7 @@ router.get('/', async (req, res) => {
                     ) {
                         if (!responseSent && !res.headersSent) {
                             responseSent = true;
-                            res.status(401).send({ code: 'Session expired or invalid' });
+                            res.status(401).send({ code: 'Session expired or invalid. Please try again.' });
                         }
                         await cleanup('logged_out');
                         return;
@@ -258,7 +256,10 @@ router.get('/', async (req, res) => {
 
                     if (!responseSent && !res.headersSent) {
                         responseSent = true;
-                        res.send({ code, message: 'Enter this in WhatsApp > Linked Devices > Link with phone number' });
+                        res.send({
+                            code,
+                            message: 'Enter this code in WhatsApp › Linked Devices › Link with phone number'
+                        });
                     }
                 } catch (error) {
                     console.error('❌ Failed to get pairing code:', error);
@@ -266,7 +267,7 @@ router.get('/', async (req, res) => {
 
                     if (!responseSent && !res.headersSent) {
                         responseSent = true;
-                        res.status(503).send({ code: 'Failed to get pairing code' });
+                        res.status(503).send({ code: 'Failed to generate pairing code. Please try again.' });
                     }
                     await cleanup('pairing_error');
                 }
@@ -276,16 +277,17 @@ router.get('/', async (req, res) => {
                 if (!sessionCompleted && !isCleaningUp) {
                     if (!responseSent && !res.headersSent) {
                         responseSent = true;
-                        res.status(408).send({ code: 'Pairing timeout — please try again' });
+                        res.status(408).send({ code: 'Pairing timed out — please try again' });
                     }
                     await cleanup('timeout');
                 }
             }, SESSION_TIMEOUT);
+
         } catch (error) {
             console.error(`❌ Error initializing session for ${num}:`, error);
             if (!responseSent && !res.headersSent) {
                 responseSent = true;
-                res.status(503).send({ code: 'Service unavailable' });
+                res.status(503).send({ code: 'Service unavailable. Please try again later.' });
             }
             await cleanup('init_error');
         }
