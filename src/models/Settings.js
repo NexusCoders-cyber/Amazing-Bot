@@ -13,7 +13,7 @@ const SettingsSchema = new mongoose.Schema({
     type: {
         type: String,
         enum: ['string', 'number', 'boolean', 'object', 'array'],
-        required: true
+        default: 'string'
     },
     description: {
         type: String,
@@ -31,5 +31,11 @@ const SettingsSchema = new mongoose.Schema({
     timestamps: true
 });
 
-const Settings = mongoose.models.Settings || mongoose.model('Settings', SettingsSchema);
+let Settings;
+try {
+    Settings = mongoose.model('Settings');
+} catch {
+    Settings = mongoose.model('Settings', SettingsSchema);
+}
+
 export default Settings;
