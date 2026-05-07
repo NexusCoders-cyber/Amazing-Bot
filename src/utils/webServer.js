@@ -154,7 +154,6 @@ class WebServer {
         this.app.get('/stats', this.handleStats.bind(this));
         this.app.get('/api/status', this.handleAPIStatus.bind(this));
 
-        // Add QR routes
         this.app.get('/qr', this.handleQRPage.bind(this));
         this.app.get('/qr/image', this.handleQRImage.bind(this));
         this.app.get('/qr/data', this.handleQRData.bind(this));
@@ -202,183 +201,6 @@ class WebServer {
         } catch (error) {
             logger.warn(`Error reading routes directory: ${error.message}`);
         }
-    }
-
-    async createDefaultAPIRoutes() {
-        const routesPath = path.join(__dirname, '..', 'api', 'routes');
-        await fs.ensureDir(routesPath);
-
-        const defaultRoutes = {
-            'health.js': this.generateHealthRoute(),
-            'stats.js': this.generateStatsRoute(),
-            'commands.js': this.generateCommandsRoute(),
-            'users.js': this.generateUsersRoute(),
-            'groups.js': this.generateGroupsRoute()
-        };
-
-        for (const [filename, content] of Object.entries(defaultRoutes)) {
-            const filePath = path.join(routesPath, filename);
-            if (!await fs.pathExists(filePath)) {
-                await fs.writeFile(filePath, content);
-            }
-        }
-    }
-
-    generateHealthRoute() {
-        return `const express = require('express');
-const router = express.Router();
-const { cache } = require('../../utils/cache');
-const { databaseManager } = require('../../utils/database');
-
-router.get('/', async (req, res) => {
-    try {
-        const health = {
-            status: 'healthy',
-            timestamp: new Date().toISOString(),
-            uptime: process.uptime(),
-            memory: process.memoryUsage(),
-            database: await databaseManager.isHealthy(),
-            cache: await cache.isHealthy(),
-            version: require('../../constants').BOT_VERSION
-        };
-        
-        res.json(health);
-    } catch (error) {
-        res.status(500).json({
-            status: 'unhealthy',
-            error: error.message
-        });
-    }
-});
-
-module.exports = router;`;
-    }
-
-    generateStatsRoute() {
-        return `const express = require('express');
-const router = express.Router();
-const { commandManager } = require('../../utils/commandManager');
-const { pluginManager } = require('../../utils/pluginManager');
-const { cache } = require('../../utils/cache');
-
-router.get('/', async (req, res) => {
-    try {
-        const stats = {
-            commands: commandManager.getSystemStats(),
-            plugins: pluginManager.getPluginStats(),
-            cache: await cache.getStats(),
-            system: {
-                uptime: process.uptime(),
-                memory: process.memoryUsage(),
-                platform: process.platform,
-                nodeVersion: process.version
-            }
-        };
-        
-        res.json(stats);
-    } catch (error) {
-        res.status(500).json({
-            error: 'Failed to get stats',
-            message: error.message
-        });
-    }
-});
-
-module.exports = router;`;
-    }
-
-    generateCommandsRoute() {
-        return `const express = require('express');
-const router = express.Router();
-const { commandManager } = require('../../utils/commandManager');
-
-router.get('/', async (req, res) => {
-    try {
-        const commands = commandManager.getAllCommands().map(cmd => ({
-            name: cmd.name,
-            category: cmd.category,
-            description: cmd.description,
-            usage: cmd.usage,
-            permissions: cmd.permissions,
-            cooldown: cmd.cooldown,
-            premium: cmd.premium
-        }));
-        
-        res.json({
-            total: commands.length,
-            commands
-        });
-    } catch (error) {
-        res.status(500).json({
-            error: 'Failed to get commands',
-            message: error.message
-        });
-    }
-});
-
-router.get('/categories', async (req, res) => {
-    try {
-        const categories = commandManager.getAllCategories();
-        const categoryStats = {};
-        
-        for (const category of categories) {
-            const commands = commandManager.getCommandsByCategory(category);
-            categoryStats[category] = commands.length;
-        }
-        
-        res.json({
-            categories,
-            stats: categoryStats
-        });
-    } catch (error) {
-        res.status(500).json({
-            error: 'Failed to get categories',
-            message: error.message
-        });
-    }
-});
-
-module.exports = router;`;
-    }
-
-    generateUsersRoute() {
-        return `const express = require('express');
-const router = express.Router();
-const { getUserStats } = require('../../models/User');
-
-router.get('/stats', async (req, res) => {
-    try {
-        const stats = await getUserStats();
-        res.json(stats);
-    } catch (error) {
-        res.status(500).json({
-            error: 'Failed to get user stats',
-            message: error.message
-        });
-    }
-});
-
-module.exports = router;`;
-    }
-
-    generateGroupsRoute() {
-        return `const express = require('express');
-const router = express.Router();
-const { getGroupStats } = require('../../models/Group');
-
-router.get('/stats', async (req, res) => {
-    try {
-        const stats = await getGroupStats();
-        res.json(stats);
-    } catch (error) {
-        res.status(500).json({
-            error: 'Failed to get group stats',
-            message: error.message
-        });
-    }
-});
-
-module.exports = router;`;
     }
 
     async handleRoot(req, res) {
@@ -541,20 +363,14 @@ module.exports = router;`;
                                 box-shadow: 0 12px 30px rgba(18, 140, 126, 0.15);
                                 border: 1px solid #d8f5e6;
                             }
-                            h1 {
-                                color: #25d366;
-                                margin-bottom: 20px;
-                            }
+                            h1 { color: #25d366; margin-bottom: 20px; }
                             img {
                                 max-width: 100%;
                                 height: auto;
                                 border: 2px solid #25d366;
                                 border-radius: 5px;
                             }
-                            p {
-                                color: #666;
-                                margin: 15px 0;
-                            }
+                            p { color: #666; margin: 15px 0; }
                             .action-row {
                                 display: flex;
                                 gap: 10px;
@@ -569,24 +385,15 @@ module.exports = router;`;
                                 font-weight: 600;
                                 transition: transform 0.2s ease, box-shadow 0.2s ease;
                             }
-                            .btn:hover {
-                                transform: translateY(-2px);
-                            }
+                            .btn:hover { transform: translateY(-2px); }
                             .btn-refresh {
                                 background: #25d366;
                                 color: white;
                                 box-shadow: 0 8px 20px rgba(37, 211, 102, 0.3);
                             }
-                            .btn-refresh:hover {
-                                background: #128c7e;
-                            }
-                            .btn-copy {
-                                background: #0f172a;
-                                color: #e2e8f0;
-                            }
-                            .btn-copy:hover {
-                                background: #020617;
-                            }
+                            .btn-refresh:hover { background: #128c7e; }
+                            .btn-copy { background: #0f172a; color: #e2e8f0; }
+                            .btn-copy:hover { background: #020617; }
                         </style>
                     </head>
                     <body>
@@ -635,8 +442,8 @@ module.exports = router;`;
             res.setHeader('Pragma', 'no-cache');
             res.setHeader('Expires', '0');
 
-            const fs = await import('fs-extra');
-            const qrStream = fs.createReadStream(qrStatus.path);
+            const fsMod = await import('fs-extra');
+            const qrStream = fsMod.default.createReadStream(qrStatus.path);
             qrStream.pipe(res);
 
             qrStream.on('error', (error) => {
