@@ -47,10 +47,15 @@ class DatabaseManager {
 
             mongoose.set('strictQuery', false);
 
-            this.connection = await mongoose.connect(dbUrl, {
-                ...config.database.options,
+            const connectOptions = {
+                maxPoolSize: parseInt(process.env.DB_MAX_POOL_SIZE) || 10,
+                serverSelectionTimeoutMS: parseInt(process.env.DB_TIMEOUT) || 5000,
+                socketTimeoutMS: parseInt(process.env.DB_SOCKET_TIMEOUT) || 45000,
+                bufferCommands: false,
                 dbName: 'ilombot'
-            });
+            };
+
+            this.connection = await mongoose.connect(dbUrl, connectOptions);
 
             this.isConnected = true;
             this.reconnectAttempts = 0;
@@ -107,7 +112,14 @@ class DatabaseManager {
 
         setTimeout(async () => {
             try {
-                await mongoose.connect(config.database.url, config.database.options);
+                const connectOptions = {
+                    maxPoolSize: parseInt(process.env.DB_MAX_POOL_SIZE) || 10,
+                    serverSelectionTimeoutMS: parseInt(process.env.DB_TIMEOUT) || 5000,
+                    socketTimeoutMS: parseInt(process.env.DB_SOCKET_TIMEOUT) || 45000,
+                    bufferCommands: false,
+                    dbName: 'ilombot'
+                };
+                await mongoose.connect(config.database.url, connectOptions);
             } catch (error) {
                 logger.error(`Reconnection failed: ${error.message}`);
                 this.handleReconnection();
