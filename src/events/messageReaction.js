@@ -1,23 +1,44 @@
 import logger from '../utils/logger.js';
 
-export default async function handleMessageReaction(sock, reaction) {
+export default async function handleMessageReaction(sock, reactions) {
     try {
-        if (!reaction || !reaction.key) return;
-        
-        const messageId = reaction.key.id;
-        const from = reaction.key.remoteJid;
-        const sender = reaction.key.participant || from;
-        const reactionEmoji = reaction.reaction?.text;
-        
-        if (!reactionEmoji) return;
-        
-        logger.info(`Reaction received: ${reactionEmoji} on message ${messageId} by ${sender}`);
-        
-        if (global.reactHandlers && global.reactHandlers[messageId]) {
-            const reactHandler = global.reactHandlers[messageId];
-            await reactHandler.handler(reactionEmoji, sender);
+        if (!reactions) return;
+
+        const reactionList = Array.isArray(reactions) ? reactions : [reactions];
+
+        for (const reaction of reactionList) {
+            try {
+                let messageId, from, sender, reactionEmoji;
+
+                if (reaction.key) {
+                    messageId = reaction.key.id;
+                    from = reaction.key.remoteJid;
+                    sender = reaction.key.participant || reaction.key.remoteJid;
+                    reactionEmoji = reaction.reaction?.text || reaction.text;
+                } else if (reaction.reaction) {
+                    messageId = reaction.reaction.key?.id;
+                    from = reaction.reaction.key?.remoteJid || reaction.key?.remoteJid;
+                    sender = reaction.participant || reaction.reaction.key?.participant || from;
+                    reactionEmoji = reaction.reaction.text;
+                } else {
+                    continue;
+                }
+
+                if (!reactionEmoji || !messageId) continue;
+
+                logger.debug(`Reaction received: ${reactionEmoji} on message ${messageId} by ${sender}`);
+
+                if (global.reactHandlers && global.reactHandlers[messageId]) {
+                    const reactHandler = global.reactHandlers[messageId];
+                    if (typeof reactHandler.handler === 'function') {
+                        const reactorNum = String(sender || '').split(':')[0];
+                        await reactHandler.handler(reactionEmoji, reactorNum);
+                    }
+                }
+            } catch (innerErr) {
+                logger.error('Error processing single reaction:', innerErr);
+            }
         }
-        
     } catch (error) {
         logger.error('Reaction handling error:', error);
     }
