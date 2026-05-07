@@ -51,12 +51,9 @@ const config = {
         url: process.env.MONGODB_URL || process.env.DATABASE_URL || 'mongodb+srv://ilomraphael_db_user:3ne2SzB08tgpCpVQ@nexuscoders.zgdgz26.mongodb.net/?appName=NexusCoders',
         enabled: process.env.DATABASE_ENABLED !== 'false',
         options: {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
             maxPoolSize: parseInt(process.env.DB_MAX_POOL_SIZE) || 10,
             serverSelectionTimeoutMS: parseInt(process.env.DB_TIMEOUT) || 5000,
             socketTimeoutMS: parseInt(process.env.DB_SOCKET_TIMEOUT) || 45000,
-            bufferMaxEntries: 0,
             bufferCommands: false,
             autoCreate: false,
             autoIndex: false
