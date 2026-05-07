@@ -15,7 +15,7 @@ const config = {
     botVersion: process.env.BOT_VERSION || '1.0.0',
     botDescription: process.env.BOT_DESCRIPTION || 'Amazing Bot created by Ilom',
     botThumbnail: process.env.BOT_THUMBNAIL || 'https://files.catbox.moe/13uws5.jpg',
-    botRepository: process.env.BOT_REPOSITORY || 'https://github.com/NexusCoders-cyber/Amazing-Bot-.git',
+    botRepository: process.env.BOT_REPOSITORY || 'https://github.com/NexusCoders-cyber/Amazing-Bot.git',
     botWebsite: process.env.BOT_WEBSITE || 'https://ilom.tech',
 
     prefix: process.env.PREFIX || '.',
@@ -48,7 +48,7 @@ const config = {
     },
 
     database: {
-        url: process.env.MONGODB_URL || process.env.DATABASE_URL || 'mongodb://localhost:27017/ilombot',
+        url: process.env.MONGODB_URL || process.env.DATABASE_URL || 'mongodb+srv://ilomraphael_db_user:3ne2SzB08tgpCpVQ@nexuscoders.zgdgz26.mongodb.net/?appName=NexusCoders',
         enabled: process.env.DATABASE_ENABLED !== 'false',
         options: {
             useNewUrlParser: true,
@@ -281,7 +281,7 @@ function validateConfig() {
         });
     }
     
-    if (config.database.url === 'mongodb://localhost:27017/ilombot') {
+    if (config.database.url === 'mongodb+srv://ilomraphael_db_user:3ne2SzB08tgpCpVQ@nexuscoders.zgdgz26.mongodb.net/?appName=NexusCoders') {
         console.warn('⚠️  Using default database URL. Consider setting DATABASE_URL for production.');
     }
     
