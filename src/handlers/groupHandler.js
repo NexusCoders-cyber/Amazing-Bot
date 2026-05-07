@@ -2,7 +2,6 @@ import logger from '../utils/logger.js';
 import config from '../config.js';
 import handleGroupJoin from '../events/groupJoin.js';
 import handleGroupLeave from '../events/groupLeave.js';
-import axios from 'axios';
 import { createPromoteImage, createDemoteImage } from '../utils/canvasUtils.js';
 import { normNum } from '../utils/adminUtils.js';
 import { isAntiOutEnabled } from '../utils/antioutStore.js';
@@ -16,18 +15,6 @@ function shouldThrottleReadd(groupId, participant) {
     if (now - last < 10 * 60 * 1000) return true;
     antiOutLastAttempt.set(key, now);
     return false;
-}
-
-async function getProfilePicture(sock, jid) {
-    try { return await sock.profilePictureUrl(jid, 'image'); }
-    catch { return null; }
-}
-
-async function downloadProfilePic(url) {
-    try {
-        const response = await axios.get(url, { responseType: 'arraybuffer', timeout: 8000 });
-        return Buffer.from(response.data);
-    } catch { return null; }
 }
 
 class GroupHandler {
@@ -101,7 +88,6 @@ class GroupHandler {
             for (const participant of participants) {
                 const userName = normNum(participant);
                 const authorName = author ? normNum(author) : 'Admin';
-
                 if (!userName) continue;
 
                 try {
@@ -138,7 +124,6 @@ class GroupHandler {
             for (const participant of participants) {
                 const userName = normNum(participant);
                 const authorName = author ? normNum(author) : 'Admin';
-
                 if (!userName) continue;
 
                 try {
