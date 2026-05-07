@@ -565,6 +565,13 @@ async function setupEventHandlers(sock, saveCreds) {
         await callHandler.handleIncomingCall(sock, calls);
     });
 
+    sock.ev.on('messages.reaction', async (reactions) => {
+        try {
+            const { default: handleMessageReaction } = await import('./src/events/messageReaction.js');
+            await handleMessageReaction(sock, reactions);
+        } catch {}
+    });
+
     setInterval(() => {
         if (sock?.user && !isShuttingDown) {
             sock.sendPresenceUpdate('available').catch(() => {});
