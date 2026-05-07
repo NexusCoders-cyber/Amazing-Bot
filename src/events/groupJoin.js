@@ -37,10 +37,8 @@ export default async function handleGroupJoin(sock, groupUpdate) {
 
                 if (ppUrl) {
                     try {
-                        const axios = (await import('axios')).default;
-                        const res = await axios.get(ppUrl, { responseType: 'arraybuffer', timeout: 8000 });
                         await sock.sendMessage(groupId, {
-                            image: Buffer.from(res.data),
+                            image: { url: ppUrl },
                             caption: text,
                             mentions: [participant]
                         });
