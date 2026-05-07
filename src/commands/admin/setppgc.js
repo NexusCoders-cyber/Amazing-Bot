@@ -1,3 +1,5 @@
+import { downloadMediaMessage } from '@whiskeysockets/baileys';
+
 export default {
     name: 'setppgc',
     aliases: ['setgcpp', 'setgroupdp'],
@@ -12,11 +14,27 @@ export default {
         const ctx = message.message?.extendedTextMessage?.contextInfo;
         const quoted = ctx?.quotedMessage;
         const imageMsg = quoted?.imageMessage;
+
         if (!imageMsg) {
             return await sock.sendMessage(from, { text: '❌ Reply to an image with .setppgc' }, { quoted: message });
         }
-        const buffer = await sock.downloadMediaMessage({ message: quoted, key: { remoteJid: from, id: ctx.stanzaId, participant: ctx.participant } });
-        await sock.updateProfilePicture(from, buffer);
-        await sock.sendMessage(from, { text: '✅ Group profile photo updated.' }, { quoted: message });
+
+        try {
+            const buffer = await downloadMediaMessage(
+                {
+                    message: { imageMessage: imageMsg },
+                    key: { remoteJid: from, id: ctx.stanzaId, participant: ctx.participant }
+                },
+                'buffer',
+                {}
+            );
+
+            await sock.updateProfilePicture(from, buffer);
+            await sock.sendMessage(from, { text: '✅ Group profile photo updated.' }, { quoted: message });
+        } catch (error) {
+            await sock.sendMessage(from, {
+                text: `❌ Failed to update group photo: ${error.message}`
+            }, { quoted: message });
+        }
     }
 };
