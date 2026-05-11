@@ -35,6 +35,31 @@ function usageBar(used, total, size = 10) {
     return `[${'█'.repeat(fill)}${'░'.repeat(Math.max(0, size - fill))}] ${Math.round(ratio * 100)}%`;
 }
 
+async function fetchAnimeImage() {
+    const apis = [
+        'https://api.waifu.pics/sfw/waifu',
+        'https://api.waifu.pics/sfw/neko',
+        'https://nekos.best/api/v2/waifu',
+        'https://nekos.best/api/v2/neko',
+    ];
+
+    for (const url of apis) {
+        try {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 8000);
+            const res = await fetch(url, { signal: controller.signal });
+            clearTimeout(timer);
+            if (!res.ok) continue;
+            const data = await res.json();
+            const imgUrl = data?.url || data?.results?.[0]?.url;
+            if (imgUrl && typeof imgUrl === 'string' && imgUrl.startsWith('http')) return imgUrl;
+        } catch {
+            continue;
+        }
+    }
+    return null;
+}
+
 export default {
     name: 'help',
     aliases: ['h', 'commands'],
@@ -89,8 +114,12 @@ export default {
             const speedStart = process.hrtime.bigint();
             const speedEnd = process.hrtime.bigint();
             const speedMs = Number(speedEnd - speedStart) / 1_000_000;
-            const ramUsed = process.memoryUsage().rss;
-            const ramTotal = os.totalmem();
+
+            const memUsage = process.memoryUsage();
+            const ramUsed = memUsage.heapUsed;
+            const ramTotal = memUsage.heapTotal;
+            const rssUsed = memUsage.rss;
+
             const uptime = formatUptime(Date.now() - bootTime);
             
             const categoryMap = {
@@ -110,7 +139,8 @@ export default {
             helpMessage += `┃ *prefix* : [ ${prefix} ]\n`;
             helpMessage += `┃ *uptime* : ${uptime}\n`;
             helpMessage += `┃ *version* : ${config.botVersion || '1.0.0'}\n`;
-            helpMessage += `┃ *usage* : ${formatBytes(ramUsed)} of ${formatBytes(ramTotal)}\n`;
+            helpMessage += `┃ *heap* : ${formatBytes(ramUsed)} / ${formatBytes(ramTotal)}\n`;
+            helpMessage += `┃ *rss* : ${formatBytes(rssUsed)}\n`;
             helpMessage += `┃ *ram* : ${usageBar(ramUsed, ramTotal)}\n`;
             helpMessage += `┃ *status* : ${userStatus}\n`;
             helpMessage += `┃ *power* : ${userPower}\n`;
@@ -137,22 +167,26 @@ export default {
             helpMessage += `*Category Menu:* ${prefix}menu <category>\n`;
             helpMessage += `*Support:* ${prefix}support`;
 
-            try {
-                const apiResponse = await fetch('https://api.waifu.pics/sfw/waifu', { timeout: 5000 });
-                const apiData = await apiResponse.json();
-                const imgUrl = apiData.url;
-                
-                await sock.sendMessage(from, {
-                    image: { url: imgUrl },
-                    caption: helpMessage,
-                    mentions: [sender]
-                }, { quoted: message });
-            } catch (error) {
-                await sock.sendMessage(from, {
-                    text: helpMessage,
-                    mentions: [sender]
-                }, { quoted: message });
+            const imgUrl = await fetchAnimeImage();
+
+            if (imgUrl) {
+                try {
+                    await sock.sendMessage(from, {
+                        image: { url: imgUrl },
+                        caption: helpMessage,
+                        mentions: [sender]
+                    }, { quoted: message });
+                    return;
+                } catch {
+                    // fall through to text
+                }
             }
+
+            await sock.sendMessage(from, {
+                text: helpMessage,
+                mentions: [sender]
+            }, { quoted: message });
+
         } catch (error) {
             await sock.sendMessage(from, {
                 text: `❌ Error loading help menu: ${error.message}`
