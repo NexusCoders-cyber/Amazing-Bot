@@ -9,7 +9,7 @@ class CallHandler {
     }
 
     async handleIncomingCall(sock, callEvents) {
-        if (!config.events.callAutoReject) return;
+        if (!config.events?.callAutoReject) return;
 
         for (const call of callEvents) {
             try {
@@ -18,61 +18,82 @@ class CallHandler {
 
                 logger.info(`Incoming ${isVideo ? 'video' : 'voice'} call from ${from}`);
 
-                const isOwner = config.ownerNumbers.some(num =>
-                    from.includes(num.replace(/[^0-9]/g, ''))
+                const fromPhone = String(from || '').replace(/[^0-9]/g, '');
+                const isOwner = (config.ownerNumbers || []).some(n =>
+                    String(n).replace(/[^0-9]/g, '') === fromPhone
                 );
 
-                if (isOwner) continue;
+                if (isOwner) {
+                    logger.info(`Call from owner ${from} — allowing`);
+                    continue;
+                }
 
-                if (this.autoReject && config.events.callAutoReject) {
-                    await sock.rejectCall(id, from);
+                if (this.autoReject && config.events?.callAutoReject) {
+                    await sock.rejectCall(id, from).catch(() => {});
 
-                    await sock.sendMessage(from, {
-                        text: `${config.botName} does not accept calls.\n\nSend a text message instead.\nType ${config.prefix}help for assistance.`
-                    });
+                    const rejectMsg = [
+                        `📵 *Auto Call Rejection*`,
+                        ``,
+                        `This bot does not accept calls.`,
+                        `Please send a text message instead.`,
+                        ``,
+                        `Type *${config.prefix || '.'}help* for available commands.`
+                    ].join('\n');
+
+                    await sock.sendMessage(from, { text: rejectMsg }).catch(() => {});
 
                     logger.info(`Call from ${from} rejected`);
 
-                    const user = await getUser(from);
-                    if (user) await updateUser(from, { $inc: { callsRejected: 1 } });
+                    try {
+                        const user = await getUser(from);
+                        if (user) {
+                            const current = typeof user.callsRejected === 'number' ? user.callsRejected : 0;
+                            await updateUser(from, { callsRejected: current + 1 });
+                        }
+                    } catch {}
 
-                    for (const ownerNumber of config.ownerNumbers) {
-                        await sock.sendMessage(ownerNumber, {
-                            text: `Call rejected from @${from.split('@')[0]}\nType: ${isVideo ? 'Video' : 'Voice'}\nGroup: ${isGroup ? 'Yes' : 'No'}`,
-                            mentions: [from]
-                        });
+                    const ownerNums = config.ownerNumbers || [];
+                    if (ownerNums.length > 0) {
+                        const ownerAlert = [
+                            `📞 *Incoming Call Blocked*`,
+                            ``,
+                            `👤 From: @${fromPhone}`,
+                            `📹 Type: ${isVideo ? 'Video' : 'Voice'} Call`,
+                            `👥 Group: ${isGroup ? 'Yes' : 'No'}`,
+                            `🕐 Time: ${new Date().toLocaleString()}`,
+                            `✅ Action: Auto-rejected`
+                        ].join('\n');
+
+                        for (const num of ownerNums) {
+                            const ownerJid = String(num).replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+                            await sock.sendMessage(ownerJid, { text: ownerAlert }).catch(() => {});
+                        }
                     }
+
+                    this.recordCallStat(from, isVideo ? 'video' : 'voice', 'rejected');
                 }
-
-                this.updateCallStats(from, isVideo);
-
             } catch (error) {
                 logger.error('Error handling call:', error);
             }
         }
     }
 
-    updateCallStats(from, isVideo) {
-        const stats = this.callStats.get(from) || { total: 0, video: 0, voice: 0 };
-        stats.total++;
-        isVideo ? stats.video++ : stats.voice++;
-        this.callStats.set(from, stats);
+    recordCallStat(from, type, action) {
+        const key = `${from}_${type}`;
+        const existing = this.callStats.get(key) || { count: 0, type, action };
+        existing.count++;
+        existing.lastAt = Date.now();
+        this.callStats.set(key, existing);
     }
 
-    setAutoReject(enabled) {
-        this.autoReject = enabled;
-        logger.info(`Auto-reject calls: ${enabled ? 'enabled' : 'disabled'}`);
-    }
-
-    getCallStats(from = null) {
-        if (from) return this.callStats.get(from) || { total: 0, video: 0, voice: 0 };
-        let totalCalls = 0, videoCalls = 0, voiceCalls = 0;
-        for (const stats of this.callStats.values()) {
-            totalCalls += stats.total;
-            videoCalls += stats.video;
-            voiceCalls += stats.voice;
-        }
-        return { total: totalCalls, video: videoCalls, voice: voiceCalls, uniqueCallers: this.callStats.size };
+    getCallStats() {
+        return {
+            total: Array.from(this.callStats.values()).reduce((a, b) => a + b.count, 0),
+            byType: {
+                video: Array.from(this.callStats.values()).filter(s => s.type === 'video').reduce((a, b) => a + b.count, 0),
+                voice: Array.from(this.callStats.values()).filter(s => s.type === 'voice').reduce((a, b) => a + b.count, 0)
+            }
+        };
     }
 }
 
