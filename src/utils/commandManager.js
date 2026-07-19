@@ -74,22 +74,14 @@ class CommandManager {
             const command = commandModule.default;
 
             if (!command?.name || typeof command?.execute !== 'function') {
-                const hasNamedExports = Object.keys(commandModule || {}).some((k) => k !== 'default');
-                if (hasNamedExports) {
-                    logger.debug(`Skipping helper module in commands directory: ${filename}`);
-                } else {
+                const hasNamedExports = Object.keys(commandModule || {}).some(k => k !== 'default');
+                if (!hasNamedExports) {
                     logger.warn(`Invalid command structure: ${filename}`);
                 }
                 return false;
             }
 
-            const commandData = {
-                ...command,
-                category,
-                filename,
-                filepath: commandPath
-            };
-
+            const commandData = { ...command, category, filename, filepath: commandPath };
             this.loadedCommands.set(command.name, commandData);
 
             if (!this.commandCategories.has(category)) {
@@ -118,7 +110,7 @@ class CommandManager {
     }
 
     async reloadCommand(commandName) {
-        const command = this.getCommand(commandName);
+        const command = this.getCommand(commandName, true);
         if (!command) return false;
         const catCmds = this.commandCategories.get(command.category) || [];
         const idx = catCmds.indexOf(command.name);
@@ -131,7 +123,7 @@ class CommandManager {
     }
 
     async reloadCategory(category) {
-        const commands = this.getCommandsByCategory(category);
+        const commands = this.getCommandsByCategory(category, true);
         for (const cmd of commands) {
             this.loadedCommands.delete(cmd.name);
             if (cmd.aliases) {
@@ -152,22 +144,29 @@ class CommandManager {
         return this.loadedCommands.size;
     }
 
-    getCommand(name) {
+    getCommand(name, ignoreDisabled = false) {
         if (!name) return null;
         const mapped = this.externalAliases.get(name);
-        return this.loadedCommands.get(name)
+        const cmd = this.loadedCommands.get(name)
             || this.loadedCommands.get(this.aliases.get(name))
             || this.loadedCommands.get(mapped)
             || null;
+        if (!cmd) return null;
+        if (!ignoreDisabled && this.disabledCommands.has(cmd.name)) return null;
+        return cmd;
     }
 
-    getCommandsByCategory(category) {
+    getCommandsByCategory(category, includeDisabled = false) {
         const names = this.commandCategories.get(category) || [];
-        return names.map(n => this.loadedCommands.get(n)).filter(Boolean);
+        return names
+            .map(n => this.loadedCommands.get(n))
+            .filter(Boolean)
+            .filter(cmd => includeDisabled || !this.disabledCommands.has(cmd.name));
     }
 
-    getAllCommands() {
-        return Array.from(this.loadedCommands.values());
+    getAllCommands(includeDisabled = false) {
+        return Array.from(this.loadedCommands.values())
+            .filter(cmd => includeDisabled || !this.disabledCommands.has(cmd.name));
     }
 
     getAllCategories() {
@@ -198,7 +197,9 @@ class CommandManager {
         usage.used++;
         usage.lastUsed = new Date();
         if (success) {
-            usage.avgExecutionTime = Math.round((usage.avgExecutionTime * (usage.used - 1) + executionTime) / usage.used);
+            usage.avgExecutionTime = Math.round(
+                (usage.avgExecutionTime * (usage.used - 1) + executionTime) / usage.used
+            );
         } else {
             usage.errors++;
         }
@@ -208,6 +209,7 @@ class CommandManager {
         const lowerQuery = query.toLowerCase();
         const results = [];
         for (const command of this.loadedCommands.values()) {
+            if (this.disabledCommands.has(command.name)) continue;
             const nameMatch = command.name.includes(lowerQuery);
             const aliasMatch = command.aliases?.some(a => a.includes(lowerQuery));
             const descMatch = command.description?.toLowerCase().includes(lowerQuery);
