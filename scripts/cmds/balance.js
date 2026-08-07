@@ -1,6 +1,6 @@
 import { getEco, fmtCoins, cleanEffects, saveEco } from '../../src/utils/economyDB.js';
 export default {
-    config: { name: 'balance', aliases: ['bal', 'wallet', 'money', 'coins'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'balance', aliases: ['bal', 'wallet', 'money', 'coins'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Check your balance or someone else\'s', category: 'economy', coolDown: 3, role: 0,
         guide: { en: '{prefix}balance [@user]' } },
     async onStart({ message, from, sender, reply }) {

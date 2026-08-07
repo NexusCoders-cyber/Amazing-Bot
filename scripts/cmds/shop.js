@@ -8,7 +8,7 @@ const ITEMS = [
     { id: 'bankpass', name: 'Bank Pass', price: 2000, desc: '+10000 bank capacity' },
 ];
 export default {
-    config: { name: 'shop', aliases: ['store', 'buy'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'shop', aliases: ['store', 'buy'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Buy items from the shop', category: 'economy', coolDown: 3, role: 0,
         guide: { en: '{prefix}shop | {prefix}shop buy <item id>' } },
     async onStart({ args, sender, reply }) {

@@ -19,7 +19,7 @@ export default {
     config: {
         name: 'video',
         aliases: ['mp4', 'ytvideo'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Download YouTube video by URL or search term',
         longDescription: 'Downloads a YouTube video as MP4. Works with a direct URL or a search term.',

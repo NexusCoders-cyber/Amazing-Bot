@@ -2,7 +2,7 @@ export default {
     config: {
         name: 'ping',
         aliases: ['speed', 'alive', 'test'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Check bot response speed',
         category: 'general',

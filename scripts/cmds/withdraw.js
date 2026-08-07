@@ -1,6 +1,6 @@
 import { getEco, saveEco, fmtCoins } from '../../src/utils/economyDB.js';
 export default {
-    config: { name: 'withdraw', aliases: ['with', 'wd'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'withdraw', aliases: ['with', 'wd'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Withdraw money from your bank', category: 'economy', coolDown: 3, role: 0,
         guide: { en: '{prefix}withdraw <amount | all>' } },
     async onStart({ args, sender, reply }) {

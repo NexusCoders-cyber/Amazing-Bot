@@ -1,6 +1,6 @@
 import { getEco, saveEco, fmtCoins } from '../../src/utils/economyDB.js';
 export default {
-    config: { name: 'transfer', aliases: ['send', 'pay', 'give'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'transfer', aliases: ['send', 'pay', 'give'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Transfer money to another user', category: 'economy', coolDown: 5, role: 0,
         guide: { en: '{prefix}transfer @user <amount>' } },
     async onStart({ message, args, from, sender, reply }) {

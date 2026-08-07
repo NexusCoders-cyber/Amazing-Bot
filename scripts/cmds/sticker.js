@@ -27,7 +27,7 @@ export default {
     config: {
         name: 'sticker',
         aliases: ['s', 'stiker'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Convert image or video to sticker',
         category: 'media',
@@ -46,7 +46,7 @@ export default {
 
         try {
             const packName = args.join(' ') || 'AmazingBot';
-            const authorName = 'Raphael Ilom';
+            const authorName = 'Broken_vzn';
             const mediaType = type === 'videoMessage' ? StickerTypes.ROUNDED : StickerTypes.DEFAULT;
 
             const sticker = new Sticker(buffer, {

@@ -2,7 +2,7 @@ import { getEco, saveEco, fmtCoins, fmtTime, cooldownLeft, addXp } from '../../s
 const CD = 7 * 24 * 60 * 60 * 1000;
 const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 export default {
-    config: { name: 'weekly', aliases: ['week', 'weeklyreward'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'weekly', aliases: ['week', 'weeklyreward'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Claim weekly reward', category: 'economy', coolDown: 3, role: 0,
         guide: { en: '{prefix}weekly' } },
     async onStart({ sender, reply }) {

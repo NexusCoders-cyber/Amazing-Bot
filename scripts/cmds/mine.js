@@ -6,7 +6,7 @@ const ORES = [
     ['Emerald', 400, 900], ['Diamond', 800, 2000], ['Ruby', 1500, 4000],
 ];
 export default {
-    config: { name: 'mine', aliases: ['mining', 'dig'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'mine', aliases: ['mining', 'dig'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Go mining to earn coins (2hr cooldown)', category: 'economy', coolDown: 3, role: 0,
         guide: { en: '{prefix}mine' } },
     async onStart({ sender, reply }) {

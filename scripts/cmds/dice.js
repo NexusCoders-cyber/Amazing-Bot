@@ -1,7 +1,7 @@
 import { getEco, saveEco, fmtCoins } from '../../src/utils/economyDB.js';
 const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 export default {
-    config: { name: 'dice', aliases: ['roll', 'gamble'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'dice', aliases: ['roll', 'gamble'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Roll dice and bet. Guess higher/lower/exact.', category: 'economy', coolDown: 5, role: 0,
         guide: { en: '{prefix}dice <amount> <high|low|exact <1-6>>' } },
     async onStart({ args, sender, reply }) {

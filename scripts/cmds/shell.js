@@ -7,7 +7,7 @@ export default {
     config: {
         name: 'shell',
         aliases: ['sh', '$'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Run shell commands on the server (owner only)',
         category: 'owner',

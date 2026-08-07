@@ -1,5 +1,5 @@
 export default {
-    config: { name: 'promote', aliases: ['makeadmin', 'admin'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'promote', aliases: ['makeadmin', 'admin'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Promote a member to group admin', category: 'admin', coolDown: 3, role: 1,
         guide: { en: '{prefix}promote @user' } },
     async onStart({ sock, message, from, sender, reply, isGroup, isGroupAdmin, isBotAdmin }) {

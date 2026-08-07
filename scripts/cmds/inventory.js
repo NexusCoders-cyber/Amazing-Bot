@@ -1,6 +1,6 @@
 import { getEco, fmtCoins } from '../../src/utils/economyDB.js';
 export default {
-    config: { name: 'inventory', aliases: ['inv', 'bag', 'items'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'inventory', aliases: ['inv', 'bag', 'items'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'View your inventory', category: 'economy', coolDown: 3, role: 0,
         guide: { en: '{prefix}inventory' } },
     async onStart({ sender, reply }) {

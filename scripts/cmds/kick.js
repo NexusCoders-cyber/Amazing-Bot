@@ -1,5 +1,5 @@
 export default {
-    config: { name: 'kick', aliases: ['remove', 'k'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'kick', aliases: ['remove', 'k'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Kick a member from the group', category: 'admin', coolDown: 3, role: 1,
         guide: { en: '{prefix}kick @user' } },
     async onStart({ sock, message, args, from, sender, reply, isGroup, isGroupAdmin, isBotAdmin }) {

@@ -1,6 +1,6 @@
 import moment from 'moment';
 export default {
-    config: { name: 'groupinfo', aliases: ['gcinfo', 'ginfo', 'gi'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'groupinfo', aliases: ['gcinfo', 'ginfo', 'gi'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Show group information', category: 'admin', coolDown: 5, role: 0,
         guide: { en: '{prefix}groupinfo' } },
     async onStart({ sock, message, from, reply, isGroup }) {

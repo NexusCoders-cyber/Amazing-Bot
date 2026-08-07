@@ -2,7 +2,7 @@ export default {
     config: {
         name: 'broadcast',
         aliases: ['bc'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Broadcast a message to all groups without triggering notifications',
         category: 'owner',

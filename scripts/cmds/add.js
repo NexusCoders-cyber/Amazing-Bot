@@ -1,5 +1,5 @@
 export default {
-    config: { name: 'add', aliases: ['addmember'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'add', aliases: ['addmember'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Add a member to the group', category: 'admin', coolDown: 5, role: 1,
         guide: { en: '{prefix}add <phone number>' } },
     async onStart({ sock, message, args, from, reply, isGroup, isGroupAdmin, isBotAdmin }) {

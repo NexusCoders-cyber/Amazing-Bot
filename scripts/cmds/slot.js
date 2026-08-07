@@ -2,7 +2,7 @@ import { getEco, saveEco, fmtCoins } from '../../src/utils/economyDB.js';
 const SYM = ['🍒', '🍋', '🍊', '🍇', '💎', '7️⃣'];
 const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 export default {
-    config: { name: 'slot', aliases: ['slots', 'spin'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'slot', aliases: ['slots', 'spin'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Spin the slot machine', category: 'economy', coolDown: 5, role: 0,
         guide: { en: '{prefix}slot <amount>' } },
     async onStart({ args, sender, reply }) {

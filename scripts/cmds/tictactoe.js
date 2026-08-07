@@ -54,7 +54,7 @@ export default {
     config: {
         name: 'tictactoe',
         aliases: ['ttt', 'xo'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Play Tic-Tac-Toe against the bot',
         category: 'games',

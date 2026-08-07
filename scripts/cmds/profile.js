@@ -2,7 +2,7 @@ export default {
     config: {
         name: 'profile',
         aliases: ['pp', 'dp'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'View your or someone else\'s profile',
         category: 'general',

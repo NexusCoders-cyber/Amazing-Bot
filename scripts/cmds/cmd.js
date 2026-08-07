@@ -7,7 +7,7 @@ const TEMPLATE = `export default {
     config: {
         name: '{name}',
         aliases: [],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Description here',
         category: 'general',
@@ -51,7 +51,7 @@ export default {
     config: {
         name: 'cmd',
         aliases: ['command'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Manage AmazingBot commands - create, edit, delete, reload, source',
         category: 'owner',

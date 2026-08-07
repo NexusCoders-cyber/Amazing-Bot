@@ -6,7 +6,7 @@ const ANIMALS = [
     ['Wolf', 600, 1200], ['Bear', 800, 1800], ['Lion', 1500, 3000],
 ];
 export default {
-    config: { name: 'hunt', aliases: ['hunting', 'shoot'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'hunt', aliases: ['hunting', 'shoot'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Go hunting to earn coins (1.5hr cooldown)', category: 'economy', coolDown: 3, role: 0,
         guide: { en: '{prefix}hunt' } },
     async onStart({ sender, reply }) {

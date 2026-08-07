@@ -21,7 +21,7 @@ export default {
     config: {
         name: 'quote',
         aliases: ['motivation', 'inspire'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Get a motivational quote',
         category: 'fun',

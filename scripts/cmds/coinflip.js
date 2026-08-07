@@ -1,6 +1,6 @@
 import { getEco, saveEco, fmtCoins } from '../../src/utils/economyDB.js';
 export default {
-    config: { name: 'coinflip', aliases: ['cf', 'flip'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'coinflip', aliases: ['cf', 'flip'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Flip a coin and bet', category: 'economy', coolDown: 5, role: 0,
         guide: { en: '{prefix}coinflip <heads|tails> <amount>' } },
     async onStart({ args, sender, reply }) {

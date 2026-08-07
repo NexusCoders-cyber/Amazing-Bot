@@ -1,5 +1,5 @@
 export default {
-    config: { name: 'mute', aliases: ['lock', 'close'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'mute', aliases: ['lock', 'close'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Mute the group (admins only can send)', category: 'admin', coolDown: 5, role: 1,
         guide: { en: '{prefix}mute' } },
     async onStart({ sock, from, reply, isGroup, isGroupAdmin, isBotAdmin }) {

@@ -4,7 +4,7 @@ export default {
     config: {
         name: 'eval',
         aliases: ['ev', '>'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Execute JavaScript code (owner only)',
         longDescription: 'Evaluate any JS expression or statement. Has access to sock, message, from, sender, usersData, threadsData, AmazingBot, api.',

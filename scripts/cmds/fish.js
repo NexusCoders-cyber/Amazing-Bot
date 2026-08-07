@@ -7,7 +7,7 @@ const FISH = [
     ['Swordfish', 500, 1000], ['Golden Fish', 1000, 3000],
 ];
 export default {
-    config: { name: 'fish', aliases: ['fishing', 'cast'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'fish', aliases: ['fishing', 'cast'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Go fishing to earn coins (1hr cooldown)', category: 'economy', coolDown: 3, role: 0,
         guide: { en: '{prefix}fish' } },
     async onStart({ sender, reply }) {

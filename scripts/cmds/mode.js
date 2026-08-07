@@ -4,7 +4,7 @@ export default {
     config: {
         name: 'mode',
         aliases: ['botmode'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Switch bot between public and private mode',
         category: 'owner',

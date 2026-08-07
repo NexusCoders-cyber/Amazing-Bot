@@ -1,6 +1,6 @@
 import config from '../../config.js';
-import moment from 'moment';
 import axios from 'axios';
+import moment from 'moment';
 
 const BOOT = Date.now();
 
@@ -8,9 +8,23 @@ const CAT_EMOJI = {
     admin: '🛡️', ai: '🤖', downloader: '📥', economy: '💰',
     fun: '🎭', games: '🎮', general: '📱', media: '🎨',
     owner: '👑', utility: '🔧', info: '📊', misc: '⭐',
+    scraper: '🔍', edit: '✨',
 };
 
-const ROLE = { 0: 'Everyone', 1: 'Group Admin', 2: 'Bot Owner' };
+const CAT_DESC = {
+    admin: 'Group management & protection',
+    ai: 'AI-powered features',
+    downloader: 'Download from platforms',
+    economy: 'Virtual currency system',
+    fun: 'Entertainment & memes',
+    games: 'Interactive games',
+    general: 'Core bot commands',
+    media: 'Media processing',
+    owner: 'Bot owner controls',
+    utility: 'Productivity tools',
+    scraper: 'Web scraping tools',
+    edit: 'Image editing',
+};
 
 function uptime(ms) {
     const s = Math.floor(ms / 1000);
@@ -32,163 +46,121 @@ async function fetchBotImage() {
         { url: 'https://api.waifu.pics/sfw/waifu', parse: d => d?.url },
         { url: 'https://api.waifu.pics/sfw/neko', parse: d => d?.url },
         { url: 'https://nekos.best/api/v2/neko', parse: d => d?.results?.[0]?.url },
-        { url: 'https://waifu.im/api/random/?selected_tags=waifu&is_nsfw=false', parse: d => d?.images?.[0]?.url },
     ];
-
     for (const api of apis.sort(() => Math.random() - 0.5)) {
         try {
             const { data: meta } = await axios.get(api.url, { timeout: 6000 });
             const imgUrl = api.parse(meta);
             if (!imgUrl) continue;
-
-            const res = await axios.get(imgUrl, {
-                responseType: 'arraybuffer',
-                timeout: 10000,
-                headers: { 'Accept': 'image/jpeg,image/png,image/webp,image/*' },
-            });
-
-            const contentType = String(res.headers?.['content-type'] || '');
-            if (!contentType.startsWith('image/')) continue;
-
+            const res = await axios.get(imgUrl, { responseType: 'arraybuffer', timeout: 10000 });
             const buf = Buffer.from(res.data);
-            if (buf.length < 2000) continue;
-
-            return buf;
+            if (buf.length > 2000) return buf;
         } catch {}
     }
     return null;
 }
 
-async function sendWithImage(sock, from, message, text, mentions) {
-    const img = await fetchBotImage().catch(() => null);
-    if (img) {
-        try {
-            return await sock.sendMessage(from, {
-                image: img,
-                caption: text,
-                mentions: mentions || [],
-            }, { quoted: message });
-        } catch {}
-    }
-    return sock.sendMessage(from, { text, mentions: mentions || [] }, { quoted: message });
-}
-
-async function showMain(sock, message, from, sender, prefix, getAllCommands, getAllCategories, getCommandsByCategory) {
-    const now = moment();
-    const name = message.pushName || 'User';
-    const uid = sender.split('@')[0];
-    const allCmds = getAllCommands();
-    const cats = getAllCategories().sort();
-    const botName = (config.botName || 'AmazingBot').toUpperCase();
-
-    let text = `╭───「 🤖 ${botName} 」\n`;
-    text += `│ 👤 User    : ${name}\n`;
-    text += `│ 🆔 UID     : ${uid}\n`;
-    text += `│ 👑 Owner   : ${config.ownerName || 'Raphael Ilom'}\n`;
-    text += `│ 🔧 Prefix  : [ ${prefix} ]\n`;
-    text += `│ ⏰ Uptime  : ${uptime(Date.now() - BOOT)}\n`;
-    text += `│ 📦 Version : ${config.botVersion}\n`;
-    text += `│ 📊 Commands: ${allCmds.length}\n`;
-    text += `│ 💾 RAM     : ${ramUsage()}\n`;
-    text += `│ 🗓️ Date    : ${now.format('DD/MM/YYYY HH:mm:ss')}\n`;
-    text += `╰────────────────────\n\n`;
-
-    for (const cat of cats) {
-        const cmds = getCommandsByCategory(cat);
-        if (!cmds?.length) continue;
-        const emoji = CAT_EMOJI[cat.toLowerCase()] || '⭐';
-        const names = cmds.map(c => c.name).sort();
-
-        text += `╭───「 ${emoji} ${cat.toUpperCase()} 」─── ${cmds.length}\n`;
-        for (let i = 0; i < names.length; i += 4) {
-            text += `│ ${names.slice(i, i + 4).join(', ')}\n`;
-        }
-        text += `╰────────────────────\n\n`;
-    }
-
-    text += `✦ *${prefix}help <category>* — list commands\n`;
-    text += `✦ *${prefix}help <command>* — command details`;
-
-    await sendWithImage(sock, from, message, text, [sender]);
-}
-
-async function showCategory(sock, message, from, sender, prefix, query, getCommandsByCategory) {
-    const cmds = getCommandsByCategory(query);
-    if (!cmds?.length) {
-        return sock.sendMessage(from, {
-            text: `❌ No commands in *${query}*.\n\nUse *${prefix}help* to see all categories.`
-        }, { quoted: message });
-    }
-
-    const emoji = CAT_EMOJI[query.toLowerCase()] || '⭐';
-    const sorted = [...cmds].sort((a, b) => a.name.localeCompare(b.name));
-
-    let text = `╭───「 ${emoji} ${query.toUpperCase()} 」─── ${sorted.length} command${sorted.length !== 1 ? 's' : ''}\n│\n`;
-
-    for (const cmd of sorted) {
-        text += `│ 🔸 ${cmd.name}`;
-        if (cmd.aliases?.length) text += ` (${cmd.aliases.slice(0, 2).join(', ')})`;
-        text += `\n`;
-        if (cmd.description) text += `│    ↳ ${cmd.description}\n`;
-    }
-    text += `╰────────────────────\n\n✦ *${prefix}help <command>* for more details`;
-
-    await sendWithImage(sock, from, message, text, [sender]);
-}
-
-async function showCommand(sock, message, from, sender, prefix, cmd) {
-    const role = cmd.role ?? (cmd.ownerOnly ? 2 : cmd.adminOnly ? 1 : 0);
-
-    let text = `╭───「 📋 COMMAND INFO 」\n`;
-    text += `│ 🏷️ Name       : ${cmd.name}\n`;
-    text += `│ 🔄 Aliases    : ${cmd.aliases?.length ? cmd.aliases.join(', ') : 'none'}\n`;
-    text += `│ 📂 Category   : ${cmd.category || 'general'}\n`;
-    text += `│ 📖 Usage      : ${prefix}${cmd.usage || cmd.name}\n`;
-    text += `│ 📝 Info       : ${cmd.description || cmd.longDescription || 'No description'}\n`;
-    text += `│ ⏱️ Cooldown   : ${cmd.cooldown || 0}s\n`;
-    text += `│ 👥 Role       : ${ROLE[role] || 'Everyone'}\n`;
-    text += `│ 👫 Group Only : ${cmd.groupOnly ? 'Yes' : 'No'}\n`;
-    text += `│ 🔓 No Prefix  : ${cmd.noPrefix ? 'Yes' : 'No'}\n`;
-    if (typeof cmd.onReply === 'function') text += `│ 💬 onReply    : Yes\n`;
-    if (typeof cmd.onReaction === 'function') text += `│ 💫 onReaction : Yes\n`;
-    if (typeof cmd.onChat === 'function') text += `│ 🗨️ onChat     : Yes\n`;
-    if (cmd.example) text += `│ 💡 Example    : ${prefix}${cmd.example}\n`;
-    text += `╰────────────────────`;
-
-    await sock.sendMessage(from, { text, mentions: [sender] }, { quoted: message });
-}
-
 export default {
     config: {
         name: 'help',
-        aliases: ['h', 'menu', 'cmds', 'commands'],
-        author: 'Raphael Ilom',
+        aliases: ['menu', 'cmd', 'commands', 'menuhelp'],
+        author: 'Broken_vzn',
         version: '2.0',
-        shortDescription: 'Show all commands, a category, or command details',
+        shortDescription: 'Show beautiful help menu',
         category: 'general',
-        coolDown: 3,
+        coolDown: 5,
         role: 0,
-        guide: { en: '{prefix}help | {prefix}help <category> | {prefix}help <command>' },
+        guide: { en: '{prefix}help [category]' }
     },
 
-    async onStart({ sock, message, args, from, sender, prefix }) {
-        const { getAllCommands, getAllCategories, getCommandsByCategory, getCommand } = await import('../../utils/commandManager.js');
-        const query = (args[0] || '').toLowerCase().trim();
+    async onStart({ args, reply, sender, prefix, pushName, message, sock, from, getAllCommands, getCommandsByCategory, getAllCategories, React }) {
+        React('📋');
 
-        if (!query) {
-            return showMain(sock, message, from, sender, prefix, getAllCommands, getAllCategories, getCommandsByCategory);
+        const allCmds = getAllCommands();
+        const cats = getAllCategories().sort();
+        const cat = args[0]?.toLowerCase();
+
+        // If user specified a category
+        if (cat && cats.includes(cat)) {
+            const cmds = getCommandsByCategory(cat);
+            const emoji = CAT_EMOJI[cat] || '⭐';
+            const desc = CAT_DESC[cat] || '';
+
+            let text = `╭──────────────────╮\n`;
+            text += `│  ${emoji} *${cat.toUpperCase()}* Commands\n`;
+            text += `│  ${desc}\n`;
+            text += `╰──────────────────╯\n\n`;
+
+            for (const cmd of (cmds || []).sort((a, b) => a.name.localeCompare(b.name))) {
+                text += `  ◆ ${prefix}${cmd.name}`;
+                if (cmd.aliases?.length) text += ` _(${cmd.aliases[0]})_`;
+                text += `\n`;
+                if (cmd.description) text += `    ${cmd.description}\n`;
+            }
+
+            text += `\n╭──────────────────╮\n`;
+            text += `│  📊 ${cmds?.length || 0} commands\n`;
+            text += `│  ${prefix}help — back to menu\n`;
+            text += `╰──────────────────╯`;
+
+            return reply(text);
         }
 
-        const cats = getAllCategories().map(c => c.toLowerCase());
-        if (cats.includes(query)) {
-            return showCategory(sock, message, from, sender, prefix, query, getCommandsByCategory);
+        // Main help menu with image
+        const name = pushName || 'User';
+        const uid = sender.split('@')[0];
+        const now = moment();
+        const botName = 'AMAZING BOT';
+
+        let text = `╭──────────────────────────────╮\n`;
+        text += `│\n`;
+        text += `│  🤖 *${botName}*\n`;
+        text += `│  ━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+        text += `│\n`;
+        text += `│  👤 ${name}\n`;
+        text += `│  🆔 ${uid}\n`;
+        text += `│  ⏱️ ${uptime(Date.now() - BOOT)}\n`;
+        text += `│  📊 ${allCmds.length} commands\n`;
+        text += `│  💾 ${ramUsage()}\n`;
+        text += `│  📅 ${now.format('DD MMM YYYY · HH:mm')}\n`;
+        text += `│\n`;
+        text += `╰──────────────────────────────╯\n\n`;
+
+        for (const c of cats) {
+            const cmds = getCommandsByCategory(c);
+            if (!cmds?.length) continue;
+            const emoji = CAT_EMOJI[c.toLowerCase()] || '⭐';
+            const count = cmds.length;
+
+            text += `  ${emoji} *${c.toUpperCase()}* ─ ${count}\n`;
+            // Show first 5 commands
+            const names = cmds.map(cmd => cmd.name).sort();
+            text += `    ${names.slice(0, 5).join(', ')}`;
+            if (count > 5) text += ` +${count - 5} more`;
+            text += `\n\n`;
         }
 
-        const found = getCommand(query);
-        if (found) return showCommand(sock, message, from, sender, prefix, found);
+        text += `╭──────────────────────────────╮\n`;
+        text += `│  📌 *Quick Links*\n`;
+        text += `│\n`;
+        text += `│  ${prefix}help <category>\n`;
+        text += `│  ${prefix}ping\n`;
+        text += `│  ${prefix}uptime\n`;
+        text += `│\n`;
+        text += `│  _Tap a category to see all commands_`;
+        text += `╰──────────────────────────────╯`;
 
-        await sock.sendMessage(from, {
-            text: `❌ *${query}* is not a valid command or category.\n\nUse *${prefix}help* to see everything.`
-        }, { quoted: message });
-    },
+        // Try to send with image
+        const img = await fetchBotImage().catch(() => null);
+        if (img) {
+            try {
+                return await sock.sendMessage(from, {
+                    image: img,
+                    caption: text,
+                }, { quoted: message });
+            } catch {}
+        }
+
+        reply(text);
+    }
 };

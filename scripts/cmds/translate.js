@@ -19,7 +19,7 @@ export default {
     config: {
         name: 'translate',
         aliases: ['tr', 'trans'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Translate text to another language',
         category: 'utility',

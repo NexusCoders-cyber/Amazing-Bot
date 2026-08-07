@@ -4,7 +4,7 @@ export default {
     config: {
         name: 'botinfo',
         aliases: ['info', 'about', 'bi'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Bot system information',
         category: 'general',
@@ -17,7 +17,7 @@ export default {
         const cpu = os.cpus()[0]?.model || 'Unknown';
         const ram = `${(mem.heapUsed / 1024 / 1024).toFixed(1)} / ${(mem.heapTotal / 1024 / 1024).toFixed(1)} MB`;
         reply([
-            `AmazingBot by Raphael Ilom`,
+            `AmazingBot by Broken_vzn`,
             ``,
             `Platform : ${process.platform}`,
             `Node.js  : ${process.version}`,

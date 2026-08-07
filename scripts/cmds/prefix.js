@@ -4,7 +4,7 @@ export default {
     config: {
         name: 'prefix',
         aliases: ['setprefix'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Change the bot command prefix',
         category: 'owner',

@@ -12,7 +12,7 @@ export default {
     config: {
         name: 'warn',
         aliases: ['warning', 'w'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Warn a group member (3 warnings = kick)',
         category: 'admin',

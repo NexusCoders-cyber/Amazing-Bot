@@ -5,7 +5,7 @@ export default {
     config: {
         name: 'sudolist',
         aliases: ['listsudo', 'sudos'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'List all current sudo users',
         category: 'owner',

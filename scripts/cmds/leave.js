@@ -1,5 +1,5 @@
 export default {
-    config: { name: 'leave', aliases: ['leavegroup'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'leave', aliases: ['leavegroup'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Make the bot leave the group', category: 'owner', coolDown: 5, role: 2,
         guide: { en: '{prefix}leave' } },
     async onStart({ sock, from, reply, isGroup }) {

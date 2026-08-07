@@ -8,7 +8,7 @@ export default {
     config: {
         name: 'setcmd',
         aliases: ['stickercmd'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Bind a command to a sticker',
         category: 'owner',

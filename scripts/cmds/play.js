@@ -112,7 +112,7 @@ export default {
     config: {
         name: 'play',
         aliases: ['music', 'song'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Download and send YouTube audio',
         longDescription: 'Searches YouTube for your query and sends the top result as an audio file with album art.',

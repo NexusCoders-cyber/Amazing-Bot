@@ -4,7 +4,7 @@ export default {
     config: {
         name: 'ban',
         aliases: ['gban', 'banuser'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Ban or unban users globally or from the group',
         category: 'admin',

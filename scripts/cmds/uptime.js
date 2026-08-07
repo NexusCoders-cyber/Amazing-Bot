@@ -10,7 +10,7 @@ export default {
     config: {
         name: 'uptime',
         aliases: ['ut', 'runtime'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Check how long the bot has been running',
         category: 'general',

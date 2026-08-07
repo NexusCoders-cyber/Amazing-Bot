@@ -15,7 +15,7 @@ export default {
     config: {
         name: 'welcome',
         aliases: ['setwelcome'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Set welcome and goodbye messages for new members',
         category: 'admin',

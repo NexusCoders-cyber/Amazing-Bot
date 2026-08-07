@@ -14,7 +14,7 @@ function trimHistory(jid, max = 10) {
 
 async function chatWithAI(prompt, history = []) {
     const messages = [
-        { role: 'system', content: 'You are AmazingBot, a helpful WhatsApp assistant created by Raphael Ilom. Be concise but thorough.' },
+        { role: 'system', content: 'You are AmazingBot, a helpful WhatsApp assistant created by Broken_vzn. Be concise but thorough.' },
         ...history,
         { role: 'user', content: prompt },
     ];
@@ -32,7 +32,7 @@ async function chatFreeAPI(prompt) {
         {
             model: 'meta-llama/Meta-Llama-3-8B-Instruct',
             messages: [
-                { role: 'system', content: 'You are AmazingBot, a helpful WhatsApp assistant created by Raphael Ilom. Be concise.' },
+                { role: 'system', content: 'You are AmazingBot, a helpful WhatsApp assistant created by Broken_vzn. Be concise.' },
                 { role: 'user', content: prompt },
             ],
             max_tokens: 400,
@@ -46,7 +46,7 @@ export default {
     config: {
         name: 'ai',
         aliases: ['gpt', 'chat', 'ask'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Chat with AI',
         category: 'ai',

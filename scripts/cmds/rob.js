@@ -2,7 +2,7 @@ import { getEco, saveEco, fmtCoins, fmtTime, cooldownLeft } from '../../src/util
 const CD = 4 * 60 * 60 * 1000;
 const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 export default {
-    config: { name: 'rob', aliases: ['steal', 'mug'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'rob', aliases: ['steal', 'mug'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Rob someone (risky!)', category: 'economy', coolDown: 3, role: 0,
         guide: { en: '{prefix}rob @user' } },
     async onStart({ message, from, sender, reply }) {

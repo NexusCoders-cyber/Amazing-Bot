@@ -5,7 +5,7 @@ export default {
     config: {
         name: 'leaderboard',
         aliases: ['lb', 'rich', 'top'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Top 10 richest users',
         category: 'economy',

@@ -8,7 +8,7 @@ const JOBS = [
     ['Trader', 200, 600], ['Security Guard', 100, 250], ['Mechanic', 150, 380],
 ];
 export default {
-    config: { name: 'work', aliases: ['job', 'earn'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'work', aliases: ['job', 'earn'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Work to earn coins (2hr cooldown)', category: 'economy', coolDown: 3, role: 0,
         guide: { en: '{prefix}work' } },
     async onStart({ sender, reply }) {

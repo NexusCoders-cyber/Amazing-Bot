@@ -1,5 +1,5 @@
 export default {
-    config: { name: 'demote', aliases: ['removeadmin', 'unadmin'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'demote', aliases: ['removeadmin', 'unadmin'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Remove admin rights from a member', category: 'admin', coolDown: 3, role: 1,
         guide: { en: '{prefix}demote @user' } },
     async onStart({ sock, message, from, sender, reply, isGroup, isGroupAdmin, isBotAdmin }) {

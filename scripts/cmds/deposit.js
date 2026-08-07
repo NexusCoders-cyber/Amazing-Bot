@@ -1,6 +1,6 @@
 import { getEco, saveEco, fmtCoins } from '../../src/utils/economyDB.js';
 export default {
-    config: { name: 'deposit', aliases: ['dep', 'save'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'deposit', aliases: ['dep', 'save'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Deposit money into your bank', category: 'economy', coolDown: 3, role: 0,
         guide: { en: '{prefix}deposit <amount | all>' } },
     async onStart({ args, sender, reply }) {

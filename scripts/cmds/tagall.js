@@ -1,5 +1,5 @@
 export default {
-    config: { name: 'tagall', aliases: ['everyone', 'all', 'mentionall'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'tagall', aliases: ['everyone', 'all', 'mentionall'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Tag all members in the group', category: 'admin', coolDown: 10, role: 1,
         guide: { en: '{prefix}tagall [message]' } },
     async onStart({ sock, message, args, from, reply, isGroup, isGroupAdmin }) {

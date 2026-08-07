@@ -27,7 +27,7 @@ export default {
     config: {
         name: 'joke',
         aliases: ['jokes', 'funny'],
-        author: 'Raphael Ilom',
+        author: 'Broken_vzn',
         version: '1.0',
         shortDescription: 'Get a random joke',
         category: 'fun',

@@ -3,7 +3,7 @@ const CD = 3 * 60 * 60 * 1000;
 const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 const CRIMES = ['robbed a bank', 'pickpocketed a tourist', 'sold counterfeit goods', 'hacked an ATM', 'ran a scam', 'forged documents'];
 export default {
-    config: { name: 'crime', aliases: ['heist'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'crime', aliases: ['heist'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Commit a crime for big money (risky)', category: 'economy', coolDown: 3, role: 0,
         guide: { en: '{prefix}crime' } },
     async onStart({ sender, reply }) {

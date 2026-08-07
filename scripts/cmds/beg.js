@@ -3,7 +3,7 @@ const CD = 30 * 60 * 1000;
 const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 const RESPONSES = ['gave you some change', 'felt generous and handed you cash', 'tossed you some coins', 'ignored you', 'called the police (but you ran away)', 'donated generously'];
 export default {
-    config: { name: 'beg', aliases: ['beg'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'beg', aliases: ['beg'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Beg for coins (small amount, 30min cooldown)', category: 'economy', coolDown: 3, role: 0,
         guide: { en: '{prefix}beg' } },
     async onStart({ sender, reply }) {

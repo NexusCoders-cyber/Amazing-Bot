@@ -2,7 +2,7 @@ import { getEco, saveEco, fmtCoins, fmtTime, cooldownLeft, addXp } from '../../s
 const CD = 24 * 60 * 60 * 1000, BMIN = 300, BMAX = 800, SBONUS = 50, MAXSBONUS = 1000;
 const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 export default {
-    config: { name: 'daily', aliases: ['claim', 'checkin'], author: 'Raphael Ilom', version: '1.0',
+    config: { name: 'daily', aliases: ['claim', 'checkin'], author: 'Broken_vzn', version: '1.0',
         shortDescription: 'Claim daily coins. Streak bonuses apply.', category: 'economy', coolDown: 3, role: 0,
         guide: { en: '{prefix}daily' } },
     async onStart({ sender, reply }) {

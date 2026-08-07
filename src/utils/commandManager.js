@@ -5,6 +5,7 @@ import { dirname } from 'path';
 import logger from './logger.js';
 import AXIS_ALIAS_MAP from './axisAliasMap.js';
 import { registerEventCommand } from './amazingbot.js';
+import { readFileSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -63,6 +64,7 @@ class CommandManager {
         await this.loadFromSrcCommands();
         await this.loadFromScriptsCmds();
         await this.loadEventScripts();
+        await this.loadCustomCommands();
         this.isInitialized = true;
         logger.info(`CommandManager: ${this.loadedCommands.size} commands loaded`);
     }
@@ -85,6 +87,67 @@ class CommandManager {
         for (const file of files) {
             await this.loadCommandFile(path.join(SCRIPTS_CMDS, file), null);
         }
+    }
+
+    async loadCustomCommands() {
+        const cmdsPath = path.join(process.cwd(), 'data', 'custom_cmds.json');
+        try {
+            const raw = readFileSync(cmdsPath, 'utf8');
+            const cmds = JSON.parse(raw);
+            for (const [name, data] of Object.entries(cmds)) {
+                if (this.loadedCommands.has(name)) continue;
+                const cmd = {
+                    name,
+                    aliases: data.aliases || [],
+                    category: data.category || 'general',
+                    description: data.description || `Custom: ${name}`,
+                    longDescription: data.description || '',
+                    usage: `{prefix}${name}`,
+                    cooldown: 3,
+                    role: data.role || 0,
+                    ownerOnly: (data.role || 0) >= 2,
+                    adminOnly: (data.role || 0) >= 1,
+                    groupOnly: false,
+                    privateOnly: false,
+                    noPrefix: false,
+                    source: 'custom',
+                    filepath: cmdsPath,
+                    filename: `${name}.json`,
+                    execute: async (ctx) => {
+                        let text = data.response || '';
+                        text = text.replace(/{user}/g, ctx.sender?.split('@')[0] || '');
+                        text = text.replace(/{name}/g, ctx.pushName || ctx.sender?.split('@')[0] || '');
+                        text = text.replace(/{prefix}/g, ctx.prefix || '.');
+                        if (data.type === 'list' && data.items?.length) {
+                            text += '\n\n' + data.items.map((item, i) => `${i + 1}. ${item}`).join('\n');
+                        }
+                        if (data.type === 'buttons' && data.items?.length) {
+                            text += '\n\n' + data.items.map(item => `▸ ${item}`).join('\n');
+                        }
+                        if (data.image) {
+                            await ctx.reply({ image: { url: data.image }, caption: text });
+                        } else if (data.sticker) {
+                            await ctx.reply({ sticker: { url: data.sticker } });
+                        } else if (text) {
+                            await ctx.reply(text);
+                        }
+                    },
+                    onStart: null,
+                    onChat: null,
+                    onReply: null,
+                    onReaction: null,
+                };
+                this.loadedCommands.set(name, cmd);
+                for (const alias of cmd.aliases) {
+                    this.aliases.set(alias, name);
+                }
+                if (!this.commandCategories.has(cmd.category)) {
+                    this.commandCategories.set(cmd.category, []);
+                }
+                this.commandCategories.get(cmd.category).push(cmd);
+            }
+            logger.info(`CommandManager: loaded ${Object.keys(cmds).length} custom commands`);
+        } catch {}
     }
 
     async loadEventScripts() {
