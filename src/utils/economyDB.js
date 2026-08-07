@@ -31,7 +31,21 @@ export const DEFAULTS = {
 };
 
 function toKey(userId) {
-    return String(userId || '').replace(/@s\.whatsapp\.net|@c\.us|@g\.us/g, '').split(':')[0];
+    return String(userId || '')
+        .replace(/@s\.whatsapp\.net|@c\.us|@g\.us|@lid|@broadcast/g, '')
+        .split(':')[0]
+        .replace(/[^0-9]/g, '');
+}
+
+export function resolveTarget(message, sender) {
+    const ctx = message?.message?.extendedTextMessage?.contextInfo;
+    const replied = ctx?.participant;
+    const mentioned = ctx?.mentionedJid?.[0];
+    return replied || mentioned || sender;
+}
+
+export function displayPhone(userId) {
+    return toKey(userId) || String(userId || '').split('@')[0];
 }
 
 function toTs(v) {
