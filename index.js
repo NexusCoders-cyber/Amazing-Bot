@@ -414,7 +414,7 @@ async function setupEventHandlers(sock, saveCreds) {
                     global._botGroupCache.set(from, Date.now());
                     captureGroupInfo(sock, from).catch(() => {});
                 }
-                captureMessageSender(message);
+                captureMessageSender(sock, message).catch(() => {});
                 const ownJid = sock?.user?.id ? sock.user.id.split(':')[0] : '';
                 const isOwnChat = ownJid && from === ownJid;
                 if (message.key.fromMe && !config.selfMode && !isOwnChat) continue;
