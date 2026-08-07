@@ -1,6 +1,7 @@
 import usersData from './usersData.js';
 import threadsData from './threadsData.js';
 import { saveEcoName } from './economyDB.js';
+import commandHandler from '../handlers/commandHandler.js';
 
 const groupRefreshThrottle = new Map();
 const THROTTLE_MS = 5 * 60 * 1000;
@@ -21,15 +22,15 @@ export async function backfillGroups(sock) {
     }
 }
 
-export function captureMessageSender(message) {
+export async function captureMessageSender(sock, message) {
     const pushName = message?.pushName;
     if (!pushName) return;
-    const rawId = message?.key?.participant || message?.key?.remoteJid;
-    if (!rawId) return;
-    const phone = String(rawId).replace(/@s\.whatsapp\.net|@c\.us|@g\.us|@lid/g, '').split(':')[0].replace(/[^0-9]/g, '');
-    if (!phone || phone.length < 7) return;
-    usersData.refreshInfo(phone, { name: pushName }).catch(() => {});
-    try { saveEcoName(phone, pushName); } catch {}
+    try {
+        const { senderPhone } = await commandHandler.resolveSenderContext(sock, message);
+        if (!senderPhone || senderPhone.length < 7) return;
+        await usersData.refreshInfo(senderPhone, { name: pushName });
+        saveEcoName(senderPhone, pushName);
+    } catch {}
 }
 
 export async function captureGroupInfo(sock, groupJid) {
