@@ -42,7 +42,7 @@ export default {
             else if (result === null) result = 'null';
             else if (typeof result !== 'string') result = inspect(result, { depth: 4, colors: false });
 
-            if (result.length > 4000) result = result.slice(0, 4000) + '\n...(truncated)';
+            if (result.length > 60000) result = result.slice(0, 60000) + '\n...(truncated at WhatsApp\'s message size limit)';
 
             await sock.sendMessage(from, { text: result }, { quoted: message });
 
