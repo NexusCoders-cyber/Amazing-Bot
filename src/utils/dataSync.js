@@ -26,10 +26,14 @@ export async function captureMessageSender(sock, message) {
     const pushName = message?.pushName;
     if (!pushName) return;
     try {
-        const { senderPhone } = await commandHandler.resolveSenderContext(sock, message);
-        if (!senderPhone || senderPhone.length < 7) return;
-        await usersData.refreshInfo(senderPhone, { name: pushName });
-        saveEcoName(senderPhone, pushName);
+        const { senderJid } = await commandHandler.resolveSenderContext(sock, message);
+        const key = String(senderJid || '')
+            .replace(/@s\.whatsapp\.net|@c\.us|@g\.us|@lid|@broadcast/g, '')
+            .split(':')[0]
+            .replace(/[^0-9]/g, '');
+        if (!key || key.length < 5) return;
+        await usersData.refreshInfo(key, { name: pushName });
+        saveEcoName(key, pushName);
     } catch {}
 }
 
