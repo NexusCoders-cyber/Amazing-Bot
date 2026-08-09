@@ -1,98 +1,54 @@
 import axios from 'axios';
 
+const API = process.env.BROKEN_API || 'https://broken-api-production-31d5.up.railway.app/api';
 const chatStates = new Map(); // jid -> { enabled, history }
 
 function getState(jid) {
-    if (!chatStates.has(jid)) chatStates.set(jid, { enabled: false, history: [] });
-    return chatStates.get(jid);
+  if (!chatStates.has(jid)) chatStates.set(jid, { enabled: false, history: [] });
+  return chatStates.get(jid);
 }
 
+// Use the BROKEN API for chatbot replies
 async function chatReply(prompt, history = []) {
-    const messages = [
-        { role: 'system', content: 'You are a friendly WhatsApp group chatbot. Be concise, fun, and helpful. Max 2-3 sentences.' },
-        ...history.slice(-10),
-        { role: 'user', content: prompt },
-    ];
-
-    // Try Gemini free tier, then OpenAI, then DeepInfra
-    if (process.env.GEMINI_API_KEY) {
-        const { data } = await axios.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-            { contents: messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })) },
-            { timeout: 15000 }
-        );
-        return data.candidates?.[0]?.content?.parts?.[0]?.text;
-    }
-    if (process.env.OPENAI_API_KEY) {
-        const { data } = await axios.post('https://api.openai.com/v1/chat/completions',
-            { model: 'gpt-4o-mini', messages, max_tokens: 200 },
-            { headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` }, timeout: 15000 }
-        );
-        return data.choices?.[0]?.message?.content;
-    }
-    const { data } = await axios.post('https://api.deepinfra.com/v1/openai/chat/completions',
-        { model: 'meta-llama/Meta-Llama-3-8B-Instruct', messages, max_tokens: 200 },
-        { timeout: 15000 }
-    );
-    return data.choices?.[0]?.message?.content;
+  try {
+    const res = await axios.get(`${API}/ai/chat`, {
+      params: { q: prompt, provider: 'agnes' },
+      timeout: 60000,
+    });
+    const data = res.data;
+    if (data?.ok && data?.answer) return data.answer;
+    throw new Error(data?.error || 'no answer');
+  } catch (e) {
+    try {
+      const res = await axios.get(`${API}/ai/chat`, { params: { q: prompt, provider: 'gpt' }, timeout: 60000 });
+      if (res.data?.ok && res.data?.answer) return res.data.answer;
+    } catch {}
+    return '😅 I could not respond right now. Try again later.';
+  }
 }
 
 export default {
-    config: {
-        name: 'chatbot',
-        aliases: ['autobot', 'botmode'],
-        author: 'Broken_vzn',
-        version: '1.0',
-        shortDescription: 'Toggle auto-reply chatbot mode (group only)',
-        category: 'ai',
-        coolDown: 5,
-        role: 0,
-        guide: { en: '{prefix}chatbot on|off' },
-    },
-
-    // onChat handler: auto-reply to messages when enabled
-    onChat: async ({ message, from, sender, args: _args, reply: _reply, sock }) => {
-        try {
-            const state = getState(from);
-            if (!state.enabled) return;
-            // Don't reply to bot messages
-            const botId = sock.user?.id?.split(':')[0] + '@s.whatsapp.net';
-            if (sender === botId) return;
-
-            const text = message.message?.conversation || message.message?.extendedTextMessage?.text;
-            if (!text || text.startsWith('!') || text.startsWith('.')) return;
-
-            const response = await chatReply(text, state.history);
-            if (!response) return;
-
-            state.history.push({ role: 'user', content: text });
-            state.history.push({ role: 'assistant', content: response });
-            if (state.history.length > 20) state.history.splice(0, state.history.length - 20);
-
-            await sock.sendMessage(from, { text: response }, { quoted: message });
-        } catch {}
-    },
-
-    // Command to toggle
-    async onStart({ args, from, isGroup, isGroupAdmin, reply }) {
-        if (!isGroup) return reply('Group-only command.');
-        if (!isGroupAdmin) return reply('Admin-only.');
-
-        const sub = (args[0] || '').toLowerCase();
-        if (!['on', 'off', 'status'].includes(sub)) {
-            return reply('Usage: chatbot on|off|status');
-        }
-
-        const state = getState(from);
-        if (sub === 'on') {
-            state.enabled = true;
-            return reply('🤖 Chatbot mode enabled! I\'ll auto-reply to messages.');
-        }
-        if (sub === 'off') {
-            state.enabled = false;
-            state.history = [];
-            return reply('🤖 Chatbot mode disabled.');
-        }
-        reply(`Chatbot: ${state.enabled ? 'ON ✅' : 'OFF ❌'}`);
-    },
+  config: {
+    name: 'chatbot',
+    aliases: ['chat', 'ai'],
+    author: 'Broken_vzn',
+    version: '2.0',
+    shortDescription: 'AI chatbot (via BROKEN API)',
+    category: 'ai',
+    coolDown: 3,
+    role: 0,
+    guide: { en: '{prefix}chatbot on/off — toggle auto-reply\n{prefix}chatbot <text> — chat once' },
+  },
+  async onStart({ args, reply, from }) {
+    const sub = (args[0] || '').toLowerCase();
+    const state = getState(from);
+    if (sub === 'on' || sub === 'enable') { state.enabled = true; return reply('✅ Chatbot enabled. I\'ll reply in this chat.'); }
+    if (sub === 'off' || sub === 'disable') { state.enabled = false; return reply('✅ Chatbot disabled.'); }
+    const q = args.join(' ');
+    if (!q) return reply('Usage: `chatbot on/off` or `chatbot <message>`');
+    const answer = await chatReply(q, state.history);
+    state.history.push({ role: 'user', content: q }, { role: 'assistant', content: answer });
+    if (state.history.length > 20) state.history = state.history.slice(-20);
+    reply('🤖 ' + answer);
+  },
 };

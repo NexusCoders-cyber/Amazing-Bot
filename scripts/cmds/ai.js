@@ -1,86 +1,58 @@
 import axios from 'axios';
 
+const API = process.env.BROKEN_API || 'https://broken-api-production-31d5.up.railway.app/api';
 const histories = new Map();
 
 function getHistory(jid) {
-    if (!histories.has(jid)) histories.set(jid, []);
-    return histories.get(jid);
+  if (!histories.has(jid)) histories.set(jid, []);
+  return histories.get(jid);
 }
-
 function trimHistory(jid, max = 10) {
-    const h = getHistory(jid);
-    if (h.length > max * 2) histories.set(jid, h.slice(-max * 2));
+  const h = getHistory(jid);
+  if (h.length > max * 2) histories.set(jid, h.slice(-max * 2));
 }
 
+// Use the BROKEN API (Agnes 2.5) for AI chat
 async function chatWithAI(prompt, history = []) {
-    const messages = [
-        { role: 'system', content: 'You are AmazingBot, a helpful WhatsApp assistant created by Broken_vzn. Be concise but thorough.' },
-        ...history,
-        { role: 'user', content: prompt },
-    ];
-    const res = await axios.post(
-        'https://api.openai.com/v1/chat/completions',
-        { model: 'gpt-3.5-turbo', messages, max_tokens: 500, temperature: 0.7 },
-        { headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' }, timeout: 30000 }
-    );
-    return res.data?.choices?.[0]?.message?.content || 'I could not generate a response.';
-}
-
-async function chatFreeAPI(prompt) {
-    const res = await axios.post(
-        'https://api.deepinfra.com/v1/openai/chat/completions',
-        {
-            model: 'meta-llama/Meta-Llama-3-8B-Instruct',
-            messages: [
-                { role: 'system', content: 'You are AmazingBot, a helpful WhatsApp assistant created by Broken_vzn. Be concise.' },
-                { role: 'user', content: prompt },
-            ],
-            max_tokens: 400,
-        },
-        { headers: { 'Content-Type': 'application/json' }, timeout: 20000 }
-    );
-    return res.data?.choices?.[0]?.message?.content || 'No response.';
+  try {
+    const res = await axios.get(`${API}/ai/chat`, {
+      params: { q: prompt, provider: 'agnes' },
+      timeout: 60000,
+    });
+    const data = res.data;
+    if (data?.ok && data?.answer) return data.answer;
+    throw new Error(data?.error || 'no answer');
+  } catch (e) {
+    // fallback provider
+    try {
+      const res = await axios.get(`${API}/ai/chat`, { params: { q: prompt, provider: 'gpt' }, timeout: 60000 });
+      if (res.data?.ok && res.data?.answer) return res.data.answer;
+    } catch {}
+    return '⚠️ AI unavailable right now. Try again in a moment.';
+  }
 }
 
 export default {
-    config: {
-        name: 'ai',
-        aliases: ['gpt', 'chat', 'ask'],
-        author: 'Broken_vzn',
-        version: '1.0',
-        shortDescription: 'Chat with AI',
-        category: 'ai',
-        coolDown: 5,
-        role: 0,
-        guide: { en: '{prefix}ai <question> | {prefix}ai clear' },
-    },
-
-    async onStart({ sock, message, args, from, reply }) {
-        if (!args.length) return reply('Ask a question: ai <your question>');
-
-        if (args[0]?.toLowerCase() === 'clear') {
-            histories.delete(from);
-            return reply('Conversation history cleared.');
-        }
-
-        const prompt = args.join(' ');
-
-        try {
-            let response;
-            const history = getHistory(from);
-
-            if (process.env.OPENAI_API_KEY) {
-                response = await chatWithAI(prompt, history);
-                history.push({ role: 'user', content: prompt });
-                history.push({ role: 'assistant', content: response });
-                trimHistory(from);
-            } else {
-                response = await chatFreeAPI(prompt);
-            }
-
-            await sock.sendMessage(from, { text: response }, { quoted: message });
-        } catch {
-            reply('AI is unavailable right now. Try again later.');
-        }
-    },
+  config: {
+    name: 'ai',
+    aliases: ['gpt', 'chat', 'ask'],
+    author: 'Broken_vzn',
+    version: '2.0',
+    shortDescription: 'Chat with AI (via BROKEN API)',
+    category: 'ai',
+    coolDown: 5,
+    role: 0,
+    guide: { en: '{prefix}ai <question>' },
+  },
+  async onStart({ args, reply, from }) {
+    const q = args.join(' ');
+    if (!q) return reply('🤖 Ask me anything: `ai <question>`');
+    const thinking = await reply('🤖 Thinking...');
+    const h = getHistory(from);
+    const answer = await chatWithAI(q, h);
+    h.push({ role: 'user', content: q }, { role: 'assistant', content: answer });
+    trimHistory(from);
+    reply('🤖 ' + answer);
+    if (thinking?.key) { try { await reply(''); } catch {} }
+  },
 };
