@@ -47,7 +47,7 @@ export default {
         try {
             const shortcode = url.match(/\/p\/([A-Za-z0-9_-]+)/)?.[1] || url.match(/\/reel\/([A-Za-z0-9_-]+)/)?.[1];
             if (shortcode) {
-                const { data } = await axios.get(`https://api.veegee.xyz/api/instagram?url=${encodeURIComponent(url)}`, { timeout: 15000 });
+                const { data } = await axios.get(`https://broken-api-production-31d5.up.railway.app/api/social/video`, { params: { url: args[0] || '' }, timeout: 60000 });
                 if (data?.success && data.data?.length) {
                     for (const item of data.data.slice(0, 5)) {
                         const buf = await fetchBuffer(item.url);

@@ -11,7 +11,7 @@ const QUOTES = [
 
 async function fetchQuote() {
     try {
-        const { data } = await axios.get('https://zenquotes.io/api/random', { timeout: 6000 });
+        const { data } = await axios.get(`https://broken-api-production-31d5.up.railway.app/api/tools/quote`, { timeout: 30000 });
         if (data?.[0]?.q) return { q: data[0].q, a: data[0].a };
     } catch {}
     return QUOTES[Math.floor(Math.random() * QUOTES.length)];

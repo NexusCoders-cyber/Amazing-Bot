@@ -8,10 +8,7 @@ const LANG_CODES = {
 };
 
 async function translate(text, target) {
-    const res = await axios.get(
-        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|${target}`,
-        { timeout: 10000 }
-    );
+    const res = await axios.get(`https://broken-api-production-31d5.up.railway.app/api/translate`, { params: { text: args[0] || '', to: 'en' }, timeout: 60000 });
     return res.data?.responseData?.translatedText || null;
 }
 

@@ -20,7 +20,7 @@ export default {
 
         const city = args.join(' ');
         try {
-            const { data } = await axios.get(`https://wttr.in/${encodeURIComponent(city)}?format=j1`, { timeout: 10000 });
+            const { data } = await axios.get(`https://broken-api-production-31d5.up.railway.app/api/tools/weather`, { params: { city: args[0] || '' }, timeout: 60000 });
             const cur = data.current_condition?.[0];
             if (!cur) return reply(`❌ Could not find weather for "${city}"`);
 

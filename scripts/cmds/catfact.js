@@ -1,3 +1,4 @@
+import axios from 'axios';
 export default {
     config: {
         name: 'catfact',
@@ -13,7 +14,7 @@ export default {
         React('⚡');
         
             try {
-                const { data } = await axios.get('https://catfact.ninja/fact');
+                const { data } = await axios.get(`https://broken-api-production-31d5.up.railway.app/api/facts/random`, { timeout: 30000 });
                 reply(`🐱 ${data.fact}`);
             } catch (e) {
                 reply('🐱 Cats spend nearly 70% of their lives sleeping.');

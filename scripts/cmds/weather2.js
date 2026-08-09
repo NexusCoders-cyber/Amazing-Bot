@@ -1,3 +1,4 @@
+import axios from 'axios';
 export default {
     config: {
         name: 'weather2',
@@ -15,7 +16,7 @@ export default {
             const city = args.join(' ');
             if (!city) return reply('Usage: .weather2 <city>\nExample: .weather2 Lagos');
             try {
-                const { data } = await axios.get(`https://wttr.in/${encodeURIComponent(city)}?format=%l:+%C+%t+(feels+%f),+humidity+%h,+wind+%w`);
+                const { data } = await axios.get(`https://broken-api-production-31d5.up.railway.app/api/tools/weather`, { params: { city: args[0] || '' }, timeout: 60000 });
                 reply(`🌦️ ${data}`);
             } catch (e) {
                 reply('Could not fetch weather for that location.');

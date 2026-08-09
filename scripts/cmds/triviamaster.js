@@ -1,3 +1,4 @@
+import axios from 'axios';
 export default {
     config: {
         name: 'triviamaster',
@@ -13,7 +14,7 @@ export default {
         React('⚡');
         
             try {
-                const { data } = await axios.get('https://opentdb.com/api.php?amount=1&type=multiple');
+                const { data } = await axios.get(`https://broken-api-production-31d5.up.railway.app/api/quiz/trivia`, { params: { amount: args[0] || '' }, timeout: 60000 });
                 const q = data.results[0];
                 const decode = s => s.replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&amp;/g, '&');
                 const options = [...q.incorrect_answers.map(decode), decode(q.correct_answer)].sort(() => Math.random() - 0.5);

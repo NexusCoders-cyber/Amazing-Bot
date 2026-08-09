@@ -16,7 +16,7 @@ export default {
         React('💹');
         const coin = (args[0] || 'bitcoin').toLowerCase().trim();
         try {
-            const { data } = await axios.get(`https://api.coingecko.com/api/v3/simple/price?ids=${coin}&vs_currencies=usd`);
+            const { data } = await axios.get(`https://broken-api-production-31d5.up.railway.app/api/trading/crypto/prices`, { params: { symbols: args[0] || '' }, timeout: 60000 });
             if (!data[coin]) return reply(`Couldn't find a coin called "${coin}". Try the full name, e.g. bitcoin, ethereum, dogecoin.`);
             reply(`💹 *${coin}*: $${data[coin].usd.toLocaleString()} USD`);
         } catch (err) {

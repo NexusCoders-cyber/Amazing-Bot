@@ -1,3 +1,4 @@
+import axios from 'axios';
 export default {
     config: {
         name: 'btcprice',
@@ -13,7 +14,7 @@ export default {
         React('⚡');
         
             try {
-                const { data } = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+                const { data } = await axios.get(`https://broken-api-production-31d5.up.railway.app/api/trading/crypto`, { params: { symbol: args[0] || '' }, timeout: 60000 });
                 reply(`₿ *Bitcoin*: $${data.bitcoin.usd.toLocaleString()} USD`);
             } catch (e) {
                 reply('Could not fetch BTC price right now.');

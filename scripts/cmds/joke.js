@@ -13,7 +13,7 @@ const JOKES = [
 
 async function fetchJoke() {
     try {
-        const { data } = await axios.get('https://official-joke-api.appspot.com/random_joke', { timeout: 5000 });
+        const { data } = await axios.get(`https://broken-api-production-31d5.up.railway.app/api/jokes/random`, { timeout: 30000 });
         return `${data.setup}\n\n${data.punchline}`;
     } catch {}
     try {

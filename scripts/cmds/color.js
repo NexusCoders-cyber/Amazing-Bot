@@ -23,7 +23,7 @@ export default {
             // Try name lookup via API
             if (!hex.startsWith('#') && !/^[0-9a-fA-F]{3,8}$/.test(hex)) {
                 try {
-                    const { data } = await axios.get(`https://www.thecolorapi.com/id?name=${encodeURIComponent(hex)}`, { timeout: 5000 });
+                    const { data } = await axios.get(`https://broken-api-production-31d5.up.railway.app/api/color`, { timeout: 30000 });
                     hex = data.hex?.value || hex;
                 } catch {}
             }

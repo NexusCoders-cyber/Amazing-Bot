@@ -1,3 +1,4 @@
+import axios from 'axios';
 export default {
     config: {
         name: 'translate2',
@@ -16,9 +17,7 @@ export default {
             const targetLang = args[0];
             const toTranslate = args.slice(1).join(' ');
             try {
-                const { data } = await axios.get(`https://api.mymemory.translated.net/get`, {
-                    params: { q: toTranslate, langpair: `en|${targetLang}` }
-                });
+                const { data } = await axios.get(`https://broken-api-production-31d5.up.railway.app/api/translate`, { params: { text: args[0] || '', to: 'en' }, timeout: 60000 });
                 const translated = data?.responseData?.translatedText;
                 if (!translated) return reply('Translation failed. Check the language code (e.g. es, fr, de, ja).');
                 reply(`🌐 *Translation (${targetLang}):*\n${translated}`);

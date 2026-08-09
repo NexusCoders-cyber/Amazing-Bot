@@ -17,7 +17,7 @@ export default {
 
         const word = args[0].toLowerCase();
         try {
-            const { data } = await axios.get(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`, { timeout: 10000 });
+            const { data } = await axios.get(`https://broken-api-production-31d5.up.railway.app/api/dictionary`, { params: { word: args[0] || '' }, timeout: 60000 });
             const entry = data[0];
             if (!entry) return reply(`No definition found for "${word}".`);
 

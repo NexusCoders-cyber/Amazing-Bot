@@ -44,7 +44,7 @@ export default {
         // Fallback: vxtwitter
         try {
             const fixedUrl = url.replace('twitter.com', 'vxtwitter.com').replace('x.com', 'vxtwitter.com');
-            const { data } = await axios.get(`https://api.vxtwitter.com/Status/GetTweetDetails?url=${encodeURIComponent(fixedUrl)}`, { timeout: 10000 });
+            const { data } = await axios.get(`https://broken-api-production-31d5.up.railway.app/api/social/video`, { params: { url: args[0] || '' }, timeout: 60000 });
             if (data?.mediaDetails?.length) {
                 for (const media of data.mediaDetails.slice(0, 4)) {
                     const mediaUrl = media.video_info?.variants?.[0]?.url || media.media_url_https;

@@ -30,7 +30,7 @@ export default {
         React('📜');
         // Try API first, fall back to local
         try {
-            const { data } = await axios.get('https://animechan.xyz/api/random', { timeout: 8000 });
+            const { data } = await axios.get(`https://broken-api-production-31d5.up.railway.app/api/quotes/random`, { timeout: 30000 });
             if (data?.quote) {
                 return reply(`📜 *"${data.quote}"*\n\n— ${data.character || 'Unknown'} (${data.anime || 'Anime'})`);
             }

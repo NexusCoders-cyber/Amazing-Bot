@@ -17,7 +17,7 @@ export default {
 
         const query = args.join(' ');
         try {
-            const { data } = await axios.get('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(query), { timeout: 10000 });
+            const { data } = await axios.get(`https://broken-api-production-31d5.up.railway.app/api/wikipedia`, { params: { query: args[0] || '' }, timeout: 60000 });
 
             if (data.type === 'disambiguation') {
                 return reply(`"${query}" is a disambiguation page. Try a more specific term.`);

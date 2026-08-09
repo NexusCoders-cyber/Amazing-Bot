@@ -20,7 +20,7 @@ export default {
         if (!amount || !fromCur || !toCur) return reply('Usage: .currency2 <amount> <FROM> <TO>\nExample: .currency2 100 USD EUR');
 
         try {
-            const { data } = await axios.get(`https://api.exchangerate-api.com/v4/latest/${fromCur}`);
+            const { data } = await axios.get(`https://broken-api-production-31d5.up.railway.app/api/tools/currency`, { timeout: 30000 });
             const rate = data.rates?.[toCur];
             if (!rate) return reply(`❌ Unknown currency: ${toCur}`);
             const result = (amount * rate).toFixed(2);
