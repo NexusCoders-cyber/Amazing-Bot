@@ -30,6 +30,15 @@ const LOBBY_TIME = 30000;   // 30s lobby wait before game starts
 const TURN_TIME = 30000;    // 30s per turn
 const START_LETTERS = 3;    // first round requires 3 letters
 
+const DICT_API = 'https://api.dictionaryapi.dev/api/v2/entries/en/';
+async function isRealWord(word) {
+  try {
+    const res = await fetch(DICT_API + encodeURIComponent(word));
+    return res.status === 200;
+  } catch { return true; }
+}
+
+
 export default {
     config: {
         name: 'wcg',
@@ -213,7 +222,7 @@ async function processWord(chatId, sock, game, sender, rawWord, reply) {
     if (word.length !== game.requiredLetters) return reply(`❌ This round needs *${game.requiredLetters} letters*!`);
     if (!word.startsWith(game.currentLetter)) return reply(`❌ Must start with *${game.currentLetter.toUpperCase()}*!`);
     if (game.playedWords.has(word)) return reply(`❌ *"${word}"* already used!`);
-    if (!WORDS.has(word)) return reply(`❌ *"${word}"* not in dictionary!`);
+    if (!(await isRealWord(word))) return reply(`❌ *"${word}"* not in dictionary!`);
 
     if (game.turnTimer) clearTimeout(game.turnTimer);
     game.playedWords.add(word);
