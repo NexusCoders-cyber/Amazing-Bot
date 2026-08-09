@@ -184,36 +184,53 @@ export default {
                 if (!game || !game.active) {
                     return reply(`❌ No active game.\n\n*Usage:*\n${prefix}wcg start [hard]\n${prefix}wcg join`);
                 }
-                if (!game.players[sender]) return reply(`❌ You're not in the game.`);
-                if (game.currentBy === sender) return reply(`⏳ Wait for your turn!`);
-
-                const word = sub.toLowerCase();
-                if (!word || !/^[a-z]+$/.test(word)) return reply(`❌ Letters only!`);
-                if (game.mode === 'hard' && word.length < HARD_MIN) return reply(`❌ Hard mode: min ${HARD_MIN} letters!`);
-                if (!word.startsWith(game.currentLetter)) return reply(`❌ Must start with *${game.currentLetter.toUpperCase()}*!`);
-                if (game.playedWords.has(word)) return reply(`❌ *"${word}"* already used!`);
-                if (!WORDS.has(word)) return reply(`❌ *"${word}"* not in dictionary!`);
-
-                if (game.turnTimer) clearTimeout(game.turnTimer);
-                game.playedWords.add(word);
-                game.wordsPlayed++;
-                game.players[sender].words++;
-                game.players[sender].letters += word.length;
-                if (word.length > game.players[sender].longest.length) {
-                    game.players[sender].longest = word;
-                }
-                game.currentLetter = word[word.length - 1];
-                game.currentWord = word;
-                game.currentBy = sender;
-
-                await reply(`✅ @${sender.split('@')[0]}: *${word}*\n\n🔤 Next: *${game.currentLetter.toUpperCase()}* | ⏰ ${TURN_TIME}s`);
-
-                game.turnTimer = setTimeout(() => skipTurn(from, sock, game), TURN_TIME * 1000);
-                break;
+                return processWord(from, sock, game, sender, sub, reply);
             }
         }
-    }
+    },
+
+    // Catch bare words typed during an active turn (no command prefix needed)
+    async onChat({ sock, message, from, sender, reply }) {
+        const game = games.get(from);
+        if (!game || !game.active) return false;
+        if (!game.players[sender]) return false;
+        const text = message?.message?.conversation || message?.message?.extendedTextMessage?.text || '';
+        if (!text) return false;
+        const trimmed = text.trim();
+        // ignore if it's a command
+        if (trimmed.startsWith('.') || trimmed.startsWith('#')) return false;
+        // only a single word, letters only
+        if (!/^[a-z]+$/i.test(trimmed)) return false;
+        await processWord(from, sock, game, sender, trimmed.toLowerCase(), reply);
+        return true;
+    },
 };
+
+// Shared word-processing logic (used by both onStart 'wcg <word>' and onChat bare words)
+async function processWord(chatId, sock, game, sender, rawWord, reply) {
+    if (!game.players[sender]) return reply(`❌ You're not in the game.`);
+    if (game.currentBy === sender) return reply(`⏳ Wait for your turn!`);
+
+    const word = String(rawWord || '').toLowerCase();
+    if (!word || !/^[a-z]+$/.test(word)) return reply(`❌ Letters only!`);
+    if (game.mode === 'hard' && word.length < HARD_MIN) return reply(`❌ Hard mode: min ${HARD_MIN} letters!`);
+    if (!word.startsWith(game.currentLetter)) return reply(`❌ Must start with *${game.currentLetter.toUpperCase()}*!`);
+    if (game.playedWords.has(word)) return reply(`❌ *"${word}"* already used!`);
+    if (!WORDS.has(word)) return reply(`❌ *"${word}"* not in dictionary!`);
+
+    if (game.turnTimer) clearTimeout(game.turnTimer);
+    game.playedWords.add(word);
+    game.wordsPlayed++;
+    game.players[sender].words++;
+    game.players[sender].letters += word.length;
+    if (word.length > game.players[sender].longest.length) game.players[sender].longest = word;
+    game.currentLetter = word[word.length - 1];
+    game.currentWord = word;
+    game.currentBy = sender;
+
+    await reply(`✅ @${sender.split('@')[0]}: *${word}*\n\n🔤 Next: *${game.currentLetter.toUpperCase()}* | ⏰ ${TURN_TIME}s`);
+    game.turnTimer = setTimeout(() => skipTurn(chatId, sock, game), TURN_TIME * 1000);
+}
 
 function startRound(chatId, sock, room) {
     if (!room.active) return;
