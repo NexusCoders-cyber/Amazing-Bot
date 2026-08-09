@@ -1,6 +1,6 @@
 // setsudo — owner command to manage sudo users (self-contained, no cross-imports).
-import { addSudoer, removeSudoer } from '../../src/utils/sessionControl.js';
-import { isTopOwner, getTopOwnerNumbers } from '../../src/utils/privilegedUsers.js';
+import { addSudoer, removeSudoer } from '../../utils/sessionControl.js';
+import { isTopOwner, getTopOwnerNumbers } from '../../utils/privilegedUsers.js';
 
 export default {
   config: {

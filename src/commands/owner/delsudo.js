@@ -1,5 +1,5 @@
-import { removeSudoer } from '../../src/utils/sessionControl.js';
-import { isTopOwner } from '../../src/utils/privilegedUsers.js';
+import { removeSudoer } from '../../utils/sessionControl.js';
+import { isTopOwner } from '../../utils/privilegedUsers.js';
 
 export default {
   config: {

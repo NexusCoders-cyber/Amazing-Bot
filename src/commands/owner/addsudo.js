@@ -1,5 +1,5 @@
-import { addSudoer } from '../../src/utils/sessionControl.js';
-import { isTopOwner, getTopOwnerNumbers } from '../../src/utils/privilegedUsers.js';
+import { addSudoer } from '../../utils/sessionControl.js';
+import { isTopOwner, getTopOwnerNumbers } from '../../utils/privilegedUsers.js';
 
 export default {
   config: {
