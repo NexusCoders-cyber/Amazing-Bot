@@ -1,74 +1,98 @@
-import { normNum, getTarget, botJid, getParticipant, getMeta } from '../../utils/adminUtils.js';
 import fs from 'fs-extra';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
-const BAN_FILE = path.join(process.cwd(), 'data', 'bans.json');
+const __filename = fileURLToPath(import.meta.url);
+const BAN_FILE = path.join(path.dirname(path.dirname(path.dirname(path.dirname(__filename)))), 'data', 'bans.json');
 
-async function loadBans() { try { await fs.ensureDir(path.dirname(BAN_FILE)); return await fs.readJSON(BAN_FILE); } catch { return {}; } }
-async function saveBans(d) { try { await fs.ensureDir(path.dirname(BAN_FILE)); await fs.writeJSON(BAN_FILE, d, { spaces: 2 }); } catch {} }
+let _bans = null;
+let _dirty = false;
 
-export async function isBanned(groupId, userId) {
-    const bans = await loadBans();
-    return !!(bans[groupId]?.[normNum(userId)]);
+function loadBans() {
+    if (_bans) return _bans;
+    try { _bans = fs.readJsonSync(BAN_FILE); }
+    catch { _bans = { global: [], groups: {} }; }
+    return _bans;
+}
+
+function saveBans() {
+    if (!_dirty) return;
+    try {
+        fs.ensureDirSync(path.dirname(BAN_FILE));
+        fs.writeJsonSync(BAN_FILE, _bans, { spaces: 2 });
+        _dirty = false;
+    } catch {}
+}
+setInterval(saveBans, 5000);
+
+function cleanId(jid) {
+    return String(jid || '').replace(/@s\.whatsapp\.net|@c\.us|@g\.us/g, '').split(':')[0];
+}
+
+export function isGlobalBanned(jid) {
+    const id = cleanId(jid);
+    return loadBans().global?.includes(id) || false;
+}
+
+export function globalBan(jid) {
+    const id = cleanId(jid);
+    const bans = loadBans();
+    if (!bans.global.includes(id)) { bans.global.push(id); _dirty = true; }
+}
+
+export function globalUnban(jid) {
+    const id = cleanId(jid);
+    const bans = loadBans();
+    bans.global = bans.global.filter(x => x !== id);
+    _dirty = true;
+}
+
+export function isGroupBanned(groupJid, userJid) {
+    const gid = cleanId(groupJid);
+    const uid = cleanId(userJid);
+    return loadBans().groups?.[gid]?.includes(uid) || false;
+}
+
+export function groupBan(groupJid, userJid) {
+    const gid = cleanId(groupJid);
+    const uid = cleanId(userJid);
+    const bans = loadBans();
+    if (!bans.groups[gid]) bans.groups[gid] = [];
+    if (!bans.groups[gid].includes(uid)) { bans.groups[gid].push(uid); _dirty = true; }
+}
+
+export function groupUnban(groupJid, userJid) {
+    const gid = cleanId(groupJid);
+    const uid = cleanId(userJid);
+    const bans = loadBans();
+    if (bans.groups[gid]) {
+        bans.groups[gid] = bans.groups[gid].filter(x => x !== uid);
+        _dirty = true;
+    }
 }
 
 export async function checkBan(sock, message) {
-    const from = message.key.remoteJid;
-    if (!from?.endsWith('@g.us')) return false;
-    if (message.key.fromMe) return false;
-    const sender = message.key.participant || message.key.remoteJid;
-    if (!sender) return false;
-    if (await isBanned(from, sender)) {
+    const from = message?.key?.remoteJid;
+    const sender = message?.key?.participant || message?.key?.remoteJid;
+    if (!from || !sender) return false;
+    const sId = cleanId(sender);
+    if (isGlobalBanned(sId)) {
+        try { await sock.sendMessage(from, { text: 'You are globally banned from this bot.' }, { quoted: message }); } catch {}
+        return true;
+    }
+    if (from.endsWith('@g.us') && isGroupBanned(from, sender)) {
         try {
-            await sock.groupParticipantsUpdate(from, [sender], 'remove');
+            await sock.groupParticipantsUpdate(from, [sender.includes('@') ? sender : sender + '@s.whatsapp.net'], 'remove');
         } catch {}
         return true;
     }
     return false;
 }
 
-export default {
-    name: 'ban',
-    aliases: ['softban'],
-    category: 'admin',
-    description: 'Ban a user — kicks them and prevents re-entry',
-    usage: 'ban @user [reason]',
-    cooldown: 3,
-    groupOnly: true,
-    adminOnly: true,
-    botAdminRequired: true,
+export function isBanned(groupJid, userJid) {
+    return isGroupBanned(groupJid, userJid);
+}
 
-    async execute({ sock, message, from, sender, args }) {
-        const target = getTarget(message) || (args.find((a) => /@/.test(a))?.replace(/[^0-9]/g, '') ? `${args.find((a) => /@/.test(a)).replace(/[^0-9]/g, '')}@s.whatsapp.net` : null);
-        if (!target) return await sock.sendMessage(from, { text: '❌ Mention or reply to a user to ban.' }, { quoted: message });
-
-        const bot = botJid(sock);
-        if (normNum(target) === normNum(bot)) return await sock.sendMessage(from, { text: "❌ I can't ban myself." }, { quoted: message });
-        if (normNum(target) === normNum(sender)) return await sock.sendMessage(from, { text: "❌ You can't ban yourself." }, { quoted: message });
-
-        const reason = args.slice(1).join(' ').trim() || 'No reason provided';
-
-        try {
-            const p = await getParticipant(sock, from, target);
-            if (!p) return await sock.sendMessage(from, { text: '❌ User is not in this group.' }, { quoted: message });
-            if (p.admin === 'superadmin') return await sock.sendMessage(from, { text: "❌ Can't ban the group creator." }, { quoted: message });
-
-            const bans = await loadBans();
-            if (!bans[from]) bans[from] = {};
-            bans[from][normNum(p.id)] = { reason, bannedBy: normNum(sender), timestamp: Date.now() };
-            await saveBans(bans);
-
-            await sock.groupParticipantsUpdate(from, [p.id], 'remove');
-            await sock.sendMessage(from, {
-                text: `🚫 @${normNum(p.id)} has been banned.\nReason: ${reason}`,
-                mentions: [p.id]
-            }, { quoted: message });
-        } catch (err) {
-            await sock.sendMessage(from, {
-                text: err.message?.includes('not-authorized') || err.message?.includes('forbidden')
-                    ? '❌ Failed: Bot lacks admin permission.'
-                    : `❌ Failed: ${err.message}`
-            }, { quoted: message });
-        }
-    }
-};
+export function getAllBans() {
+    return loadBans();
+}

@@ -26,36 +26,71 @@ export const DEFAULTS = {
     totalEarned: 1000,
     totalSpent: 0,
     badges: [],
-    createdAt: null
+    createdAt: null,
+    name: null
 };
 
-function ensureFile() {
-    const dir = dirname(DATA_PATH);
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    if (!existsSync(DATA_PATH)) writeFileSync(DATA_PATH, '{}', 'utf8');
-}
-
-function readStore() {
-    ensureFile();
-    try { return JSON.parse(readFileSync(DATA_PATH, 'utf8')); } catch { return {}; }
-}
-
-function writeStore(store) {
-    ensureFile();
-    writeFileSync(DATA_PATH, JSON.stringify(store, null, 2), 'utf8');
-}
-
 function toKey(userId) {
-    const stripped = String(userId).replace(/[^0-9]/g, '');
-    return stripped || String(userId);
+    return String(userId || '')
+        .replace(/@s\.whatsapp\.net|@c\.us|@g\.us|@lid|@broadcast/g, '')
+        .split(':')[0]
+        .replace(/[^0-9]/g, '');
 }
 
-function toTs(val) {
-    if (!val) return null;
-    if (typeof val === 'number') return val;
-    const d = new Date(val);
+export function resolveTarget(message, sender) {
+    const ctx = message?.message?.extendedTextMessage?.contextInfo;
+    const replied = ctx?.participant;
+    const mentioned = ctx?.mentionedJid?.[0];
+    return replied || mentioned || sender;
+}
+
+export function displayPhone(userId) {
+    return toKey(userId) || String(userId || '').split('@')[0];
+}
+
+function toTs(v) {
+    if (!v) return null;
+    if (typeof v === 'number') return v;
+    const d = new Date(v);
     return isNaN(d.getTime()) ? null : d.getTime();
 }
+
+let store = null;
+let dirty = false;
+
+function ensureDir() {
+    const dir = dirname(DATA_PATH);
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+}
+
+function loadStore() {
+    if (store) return store;
+    ensureDir();
+    try {
+        store = existsSync(DATA_PATH) ? JSON.parse(readFileSync(DATA_PATH, 'utf8')) : {};
+    } catch (err) {
+        console.error('[economyDB] Failed to read data file, starting fresh:', err.message);
+        store = {};
+    }
+    runMigration();
+    return store;
+}
+
+function flush() {
+    if (!dirty || !store) return;
+    try {
+        ensureDir();
+        writeFileSync(DATA_PATH, JSON.stringify(store, null, 2), 'utf8');
+        dirty = false;
+    } catch (err) {
+        console.error('[economyDB] Failed to write data file:', err.message);
+    }
+}
+
+setInterval(flush, 3000);
+process.on('exit', flush);
+process.on('SIGINT', () => { flush(); process.exit(0); });
+process.on('SIGTERM', () => { flush(); process.exit(0); });
 
 let migrationDone = false;
 
@@ -64,8 +99,6 @@ function runMigration() {
     migrationDone = true;
 
     if (!existsSync(LEGACY_PATH)) return;
-
-    const store = readStore();
     if (Object.keys(store).length > 0) return;
 
     try {
@@ -80,67 +113,76 @@ function runMigration() {
 
             migrated[key] = {
                 ...DEFAULTS,
-                wallet:      eco.balance      ?? 1000,
-                bank:        eco.bank         ?? 0,
-                level:       eco.level        ?? 1,
-                xp:          eco.xp           ?? 0,
-                streak:      eco.dailyStreak  ?? eco.streak ?? 0,
-                diamonds:    eco.diamonds     ?? 0,
-                stars:       eco.stars        ?? 0,
-                lastDaily:   toTs(eco.lastDaily),
-                lastWeekly:  toTs(eco.lastWeekly),
-                lastWork:    toTs(eco.lastWork),
-                totalEarned: eco.balance      ?? 1000,
-                createdAt:   toTs(userData.createdAt) || Date.now()
+                wallet: eco.balance ?? 1000,
+                bank: eco.bank ?? 0,
+                level: eco.level ?? 1,
+                xp: eco.xp ?? 0,
+                streak: eco.dailyStreak ?? eco.streak ?? 0,
+                diamonds: eco.diamonds ?? 0,
+                stars: eco.stars ?? 0,
+                lastDaily: toTs(eco.lastDaily),
+                lastWeekly: toTs(eco.lastWeekly),
+                lastWork: toTs(eco.lastWork),
+                totalEarned: eco.balance ?? 1000,
+                createdAt: toTs(userData.createdAt) || Date.now()
             };
         }
 
         if (Object.keys(migrated).length > 0) {
-            writeStore(migrated);
+            store = migrated;
+            dirty = true;
+            flush();
         }
-    } catch {}
+    } catch (err) {
+        console.error('[economyDB] Migration failed:', err.message);
+    }
 }
 
 export function getEco(userId) {
-    runMigration();
+    const db = loadStore();
     const key = toKey(userId);
-    const store = readStore();
-    if (!store[key]) {
-        store[key] = { ...DEFAULTS, createdAt: Date.now() };
-        writeStore(store);
+    if (!key) return { ...DEFAULTS };
+    if (!db[key]) {
+        db[key] = { ...DEFAULTS, createdAt: Date.now() };
+        dirty = true;
     }
-    return { ...DEFAULTS, ...store[key] };
+    return db[key];
 }
 
 export function saveEco(userId, data) {
-    runMigration();
+    const db = loadStore();
     const key = toKey(userId);
-    const store = readStore();
-    store[key] = { ...(store[key] || { ...DEFAULTS, createdAt: Date.now() }), ...data };
-    writeStore(store);
-    syncToUserModel(userId, store[key]).catch(() => {});
+    if (!key) return null;
+    db[key] = { ...(db[key] || DEFAULTS), ...data };
+    dirty = true;
+    syncToUserModel(key, db[key]).catch(() => {});
+    return db[key];
 }
 
 export function getAllEco() {
-    runMigration();
-    const store = readStore();
-    return Object.entries(store).map(([phone, data]) => ({
-        phone,
-        jid: phone.includes('@') ? phone : phone + '@s.whatsapp.net',
-        ...DEFAULTS,
-        ...data,
-        netWorth: (data.wallet || 0) + (data.bank || 0)
-    }));
+    return { ...loadStore() };
+}
+
+export function saveEcoName(userId, name) {
+    if (!name) return;
+    const db = loadStore();
+    const key = toKey(userId);
+    if (!key) return;
+    if (!db[key]) db[key] = { ...DEFAULTS, createdAt: Date.now() };
+    if (db[key].name === name) return;
+    db[key].name = name;
+    dirty = true;
 }
 
 export function hasEffect(eco, effectId) {
-    if (!Array.isArray(eco.activeEffects)) return false;
-    return eco.activeEffects.some(e => e.id === effectId && e.expiresAt > Date.now());
+    const now = Date.now();
+    return (eco.activeEffects || []).some(e => e.id === effectId && e.expiresAt > now);
 }
 
 export function addEffect(eco, effectId, durationMs) {
     const effects = (eco.activeEffects || []).filter(e => e.id !== effectId);
     effects.push({ id: effectId, expiresAt: Date.now() + durationMs });
+    eco.activeEffects = effects;
     return effects;
 }
 
@@ -151,45 +193,57 @@ export function cleanEffects(eco) {
 
 export function addXp(eco, amount) {
     const xp = (eco.xp || 0) + amount;
-    const level = Math.floor(1 + Math.sqrt(xp / 100));
+    const level = Math.floor(0.1 * Math.sqrt(xp)) + 1;
     return { xp, level };
 }
 
+export function xpForLevel(level) {
+    return 100 * Math.pow(Math.max(level, 1) - 1, 2);
+}
+
+export function levelProgress(level, xp) {
+    const lvl = Math.max(level || 1, 1);
+    const currentFloor = xpForLevel(lvl);
+    const nextFloor = xpForLevel(lvl + 1);
+    const into = Math.max((xp || 0) - currentFloor, 0);
+    const needed = Math.max(nextFloor - currentFloor, 1);
+    return { into, needed, percent: Math.min(into / needed, 1) };
+}
+
 export function fmtCoins(n) {
-    return Number(n || 0).toLocaleString();
+    return '$' + Number(n || 0).toLocaleString('en-US');
 }
 
 export function fmtTime(ms) {
-    if (!ms || ms <= 0) return null;
     const s = Math.floor(ms / 1000);
-    const m = Math.floor(s / 60);
-    const h = Math.floor(m / 60);
-    const d = Math.floor(h / 24);
-    if (d > 0) return `${d}d ${h % 24}h`;
-    if (h > 0) return `${h}h ${m % 60}m`;
-    if (m > 0) return `${m}m ${s % 60}s`;
-    return `${s}s`;
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    if (h > 0) return `${h}h ${m}m ${sec}s`;
+    if (m > 0) return `${m}m ${sec}s`;
+    return `${sec}s`;
 }
 
 export function cooldownLeft(lastTs, cooldownMs) {
     if (!lastTs) return 0;
-    return Math.max(0, cooldownMs - (Date.now() - lastTs));
+    const left = cooldownMs - (Date.now() - lastTs);
+    return left > 0 ? left : 0;
 }
 
 async function syncToUserModel(userId, data) {
     try {
         const { updateUser } = await import('../models/User.js');
         await updateUser(userId, {
-            'economy.balance':    data.wallet    ?? 0,
-            'economy.bank':       data.bank      ?? 0,
-            'economy.xp':         data.xp        ?? 0,
-            'economy.level':      data.level     ?? 1,
-            'economy.streak':     data.streak    ?? 0,
-            'economy.diamonds':   data.diamonds  ?? 0,
-            'economy.stars':      data.stars     ?? 0,
-            'economy.lastDaily':  data.lastDaily  ? new Date(data.lastDaily)  : null,
+            'economy.balance': data.wallet ?? 0,
+            'economy.bank': data.bank ?? 0,
+            'economy.xp': data.xp ?? 0,
+            'economy.level': data.level ?? 1,
+            'economy.streak': data.streak ?? 0,
+            'economy.diamonds': data.diamonds ?? 0,
+            'economy.stars': data.stars ?? 0,
+            'economy.lastDaily': data.lastDaily ? new Date(data.lastDaily) : null,
             'economy.lastWeekly': data.lastWeekly ? new Date(data.lastWeekly) : null,
-            'economy.lastWork':   data.lastWork   ? new Date(data.lastWork)   : null
+            'economy.lastWork': data.lastWork ? new Date(data.lastWork) : null
         });
     } catch {}
 }

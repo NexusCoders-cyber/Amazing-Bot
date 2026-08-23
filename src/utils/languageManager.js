@@ -1,8 +1,16 @@
 import fs from 'fs-extra';
 import path from 'path';
-import translate from 'translate-google-api';
+import axios from 'axios';
 import { getGroup, updateGroup } from '../models/Group.js';
 import { getUser, updateUser } from '../models/User.js';
+
+async function translate(text, { to }) {
+    const res = await axios.get('https://api.mymemory.translated.net/get', {
+        params: { q: text, langpair: `en|${to}` },
+        timeout: 10000,
+    });
+    return res.data?.responseData?.translatedText || text;
+}
 
 const SUPPORTED_LANGS = {
     en: 'English', af: 'Afrikaans', ar: 'Arabic', zh: 'Chinese', nl: 'Dutch', fr: 'French', de: 'German',

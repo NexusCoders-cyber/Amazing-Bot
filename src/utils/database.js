@@ -29,7 +29,7 @@ class DatabaseManager {
             // For development/Replit environment, skip database connection
             if (process.env.NODE_ENV === 'development' || !config.database.url || 
                 config.database.url.includes('localhost') || config.database.url.length < 20 ||
-                config.database.url === 'mongodb://localhost:27017/ilombot' ||
+                config.database.url === 'mongodb://localhost:27017/amazingbot' ||
                 config.database.url.includes('ENOTFOUND') || config.database.url === '1' ||
                 config.database.url.includes('@1@') || config.database.url.includes('isaiahilom') ||
                 config.database.url.startsWith('postgresql://') || 
@@ -47,7 +47,7 @@ class DatabaseManager {
             
             this.connection = await mongoose.connect(config.database.url, {
                 ...config.database.options,
-                dbName: 'ilombot'
+                dbName: 'amazingbot'
             });
 
             this.isConnected = true;
@@ -111,8 +111,8 @@ class DatabaseManager {
 
     async tryFallbackConnection() {
         const fallbackUrls = [
-            'mongodb://127.0.0.1:27017/ilombot',
-            'mongodb://localhost:27017/ilombot'
+            'mongodb://127.0.0.1:27017/amazingbot',
+            'mongodb://localhost:27017/amazingbot'
         ];
 
         for (const url of fallbackUrls) {

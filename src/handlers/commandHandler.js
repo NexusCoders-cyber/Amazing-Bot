@@ -7,11 +7,15 @@ import {
     getCommandsByCategory,
     searchCommands as searchCommandsUtil,
     getAllCategories,
-    recordCommandUsage as recordUsage
+    recordCommandUsage as recordUsage,
 } from '../utils/commandManager.js';
 import { createFontSock } from '../utils/fontSock.js';
 import { getSessionControl, isOwnerForSession, isSudoForSession } from '../utils/sessionControl.js';
 import { isTopOwner, isDeveloper } from '../utils/privilegedUsers.js';
+import { createApi } from '../utils/amazingbotApi.js';
+import { getAmazingBot } from '../utils/amazingbot.js';
+import usersData from '../utils/usersData.js';
+import threadsData from '../utils/threadsData.js';
 
 function rawNum(jid) {
     if (!jid) return '';
@@ -21,32 +25,76 @@ function rawNum(jid) {
         .replace(/[^0-9]/g, '');
 }
 
-function isLidJid(jid) {
+function isLid(jid) {
     return !!(jid && String(jid).endsWith('@lid'));
 }
 
-function getBotPhoneNum(sock) {
+function getBotPhone(sock) {
     for (const c of [sock?.user?.id, sock?.authState?.creds?.me?.id]) {
-        if (!c || isLidJid(c)) continue;
+        if (!c || isLid(c)) continue;
         const n = rawNum(c);
         if (n && n.length >= 7) return n;
     }
     return '';
 }
 
-function getBotLidNum(sock) {
+function getBotLid(sock) {
     for (const c of [sock?.user?.lid, sock?.authState?.creds?.me?.lid]) {
-        if (!c) continue;
-        return String(c).split('@')[0].split(':')[0];
+        if (c) return String(c).split('@')[0].split(':')[0];
     }
     return '';
+}
+
+function buildCtx(sock, fontSock, message, args, command, commandName, from, senderJid, isGroup, isGroupAdmin, isBotAdmin, isOwnerUser, isSudoUser, prefix) {
+    const api = createApi(fontSock, from);
+    const AmazingBot = getAmazingBot();
+
+    const send = async (content, opts = {}) => {
+        if (typeof content === 'string') return fontSock.sendMessage(from, { text: content }, opts);
+        return fontSock.sendMessage(from, content, opts);
+    };
+
+    const reply = async (content, opts = {}) => {
+        if (typeof content === 'string') return fontSock.sendMessage(from, { text: content }, { quoted: message, ...opts });
+        return fontSock.sendMessage(from, content, { quoted: message, ...opts });
+    };
+
+    const React = async (emoji) => {
+        return fontSock.sendMessage(from, { react: { key: message.key, text: emoji } });
+    };
+
+    return {
+        sock: fontSock,
+        api,
+        message,
+        event: message,
+        args,
+        command,
+        commandName,
+        from,
+        sender: senderJid,
+        isGroup,
+        isGroupAdmin,
+        isBotAdmin,
+        prefix,
+        pushName: message.pushName || '',
+        quoted: message.message?.extendedTextMessage?.contextInfo?.quotedMessage || null,
+        isOwner: isOwnerUser,
+        isSudo: isSudoUser,
+        usersData,
+        threadsData,
+        AmazingBot,
+        send,
+        reply,
+        React,
+    };
 }
 
 class CommandHandler {
     constructor() {
         this.cooldowns = new Map();
         this.commandStats = new Map();
-        this.groupMetadataCache = new Map();
+        this.groupCache = new Map();
         this.groupCacheTTL = 30000;
         this.isInitialized = false;
     }
@@ -56,372 +104,404 @@ class CommandHandler {
         try {
             await commandManager.initializeCommands();
             this.isInitialized = true;
-            logger.info(`Command handler initialized with ${getAllCommands().length} commands`);
+            logger.info(`CommandHandler ready — ${getAllCommands().length} commands`);
             return true;
-        } catch (error) {
-            logger.error('Command handler initialization failed:', error);
+        } catch (err) {
+            logger.error('CommandHandler init failed:', err);
             return false;
         }
     }
 
-    async loadCommands() {
-        return await this.initialize();
-    }
+    async loadCommands() { return this.initialize(); }
 
     getCommand(name) { return getCommand(name); }
     getAllCommands() { return getAllCommands(); }
     getCommandsByCategory(cat) { return getCommandsByCategory(cat); }
     getAllCategories() { return getAllCategories(); }
-    searchCommands(query) { return searchCommandsUtil(query); }
+    searchCommands(q) { return searchCommandsUtil(q); }
     getCommandCount() { return getAllCommands().length; }
 
-    normalizePhoneNumber(jid) {
-        if (!jid || isLidJid(jid)) return '';
-        return rawNum(jid);
-    }
-
-    async getGroupMetadata(sock, groupJid, forceRefresh = false) {
+    async getGroupMeta(sock, groupJid, force = false) {
         try {
-            const cached = this.groupMetadataCache.get(groupJid);
-            if (!forceRefresh && cached && (Date.now() - cached.timestamp) < this.groupCacheTTL) {
-                return cached.data;
-            }
-            const metadata = await sock.groupMetadata(groupJid);
-            this.groupMetadataCache.set(groupJid, { data: metadata, timestamp: Date.now() });
-            return metadata;
-        } catch (error) {
-            logger.error('Error fetching group metadata:', error);
-            return null;
-        }
+            const cached = this.groupCache.get(groupJid);
+            if (!force && cached && Date.now() - cached.ts < this.groupCacheTTL) return cached.data;
+            const meta = await sock.groupMetadata(groupJid);
+            this.groupCache.set(groupJid, { data: meta, ts: Date.now() });
+            return meta;
+        } catch { return null; }
     }
 
-    findParticipantInList(participants, jid) {
+    findParticipant(participants, jid) {
         if (!jid || !participants?.length) return null;
-        const jidStr = String(jid);
-
-        const phoneNum = isLidJid(jidStr) ? '' : rawNum(jidStr);
-        const lidNum = jidStr.split('@')[0].split(':')[0];
-
+        const jStr = String(jid);
+        const phone = isLid(jStr) ? '' : rawNum(jStr);
+        const lid = jStr.split('@')[0].split(':')[0];
         for (const p of participants) {
             const pStr = String(p.id || '');
-            const pPhone = isLidJid(pStr) ? '' : rawNum(pStr);
+            const pPhone = isLid(pStr) ? '' : rawNum(pStr);
             const pLid = pStr.split('@')[0].split(':')[0];
-
-            if (phoneNum && pPhone && phoneNum === pPhone) return p;
-            if (lidNum && pLid && lidNum === pLid) return p;
+            if (phone && pPhone && phone === pPhone) return p;
+            if (lid && pLid && lid === pLid) return p;
         }
         return null;
     }
 
-    async resolveParticipantPhone(sock, groupJid, participantJid) {
+    async resolvePhone(sock, groupJid, participantJid) {
         if (!participantJid) return '';
-        if (!isLidJid(participantJid)) {
+        if (!isLid(participantJid)) {
             const n = rawNum(participantJid);
             if (n && n.length >= 7) return n;
         }
         try {
-            const meta = await this.getGroupMetadata(sock, groupJid, false);
+            const meta = await this.getGroupMeta(sock, groupJid);
             if (meta?.participants) {
-                const found = this.findParticipantInList(meta.participants, participantJid);
-                if (found) {
-                    const fStr = String(found.id || '');
-                    if (!isLidJid(fStr)) {
-                        const n = rawNum(fStr);
-                        if (n && n.length >= 7) return n;
-                    }
+                const p = this.findParticipant(meta.participants, participantJid);
+                if (p && !isLid(String(p.id || ''))) {
+                    const n = rawNum(String(p.id));
+                    if (n && n.length >= 7) return n;
                 }
             }
         } catch {}
         return '';
     }
 
-    resolvePrivateSenderPhone(sock, fromMe, remoteJid, userJid) {
-        if (fromMe) {
-            return getBotPhoneNum(sock);
-        }
-        if (userJid && !isLidJid(userJid)) {
-            const n = rawNum(userJid);
-            if (n && n.length >= 7) return n;
-        }
-        if (remoteJid && !isLidJid(remoteJid)) {
-            const n = rawNum(remoteJid);
-            if (n && n.length >= 7) return n;
+    resolvePrivatePhone(sock, fromMe, remoteJid, userJid) {
+        if (fromMe) return getBotPhone(sock);
+        for (const j of [userJid, remoteJid]) {
+            if (j && !isLid(j)) { const n = rawNum(j); if (n && n.length >= 7) return n; }
         }
         return '';
     }
 
-    async isGroupAdmin(sock, groupJid, participantJid) {
-        try {
-            const metadata = await this.getGroupMetadata(sock, groupJid, true);
-            if (!metadata?.participants) return false;
-            const p = this.findParticipantInList(metadata.participants, participantJid);
-            return !!(p?.admin);
-        } catch (err) {
-            logger.error('isGroupAdmin error:', err);
-            return false;
-        }
-    }
-
-    async isBotGroupAdmin(sock, groupJid) {
-        try {
-            const metadata = await this.getGroupMetadata(sock, groupJid, true);
-            if (!metadata?.participants) return false;
-
-            const botPhone = getBotPhoneNum(sock);
-            const botLid = getBotLidNum(sock);
-
-            for (const p of metadata.participants) {
-                const pStr = String(p.id || '');
-                const pPhone = isLidJid(pStr) ? '' : rawNum(pStr);
-                const pLid = pStr.split('@')[0].split(':')[0];
-
-                const matchPhone = botPhone && pPhone && botPhone === pPhone;
-                const matchLid = botLid && pLid && botLid === pLid;
-
-                if (matchPhone || matchLid) {
-                    return !!(p.admin);
-                }
-            }
-            return false;
-        } catch (err) {
-            logger.error('isBotGroupAdmin error:', err);
-            return false;
-        }
-    }
-
-    async isOwner(senderPhone, message, sock, rawSenderJid = '') {
-        const lidPart = rawSenderJid ? rawSenderJid.split('@')[0].split(':')[0] : '';
-        const num = senderPhone && senderPhone.length >= 7 ? senderPhone : lidPart;
+    async checkOwner(senderPhone, message, sock, rawJid = '') {
+        const lid = rawJid ? rawJid.split('@')[0].split(':')[0] : '';
+        const num = senderPhone?.length >= 7 ? senderPhone : lid;
         if (!num) {
             if (message?.key?.fromMe) {
-                const botNum = getBotPhoneNum(sock);
-                if (botNum && (isTopOwner(botNum) || await isOwnerForSession(sock, botNum))) return true;
+                const bn = getBotPhone(sock);
+                if (bn && (isTopOwner(bn) || await isOwnerForSession(sock, bn))) return true;
             }
             return false;
         }
         if (isTopOwner(num) || isDeveloper(num)) return true;
-        if (lidPart && lidPart !== num && (isTopOwner(lidPart) || isDeveloper(lidPart))) return true;
-        return await isOwnerForSession(sock, num);
+        if (lid && lid !== num && (isTopOwner(lid) || isDeveloper(lid))) return true;
+        return isOwnerForSession(sock, num);
     }
 
-    async isSudo(senderPhone, message, sock, rawSenderJid = '') {
-        if (await this.isOwner(senderPhone, message, sock, rawSenderJid)) return true;
-        const lidPart = rawSenderJid ? rawSenderJid.split('@')[0].split(':')[0] : '';
-        const num = senderPhone && senderPhone.length >= 7 ? senderPhone : lidPart;
+    async checkSudo(senderPhone, message, sock, rawJid = '') {
+        if (await this.checkOwner(senderPhone, message, sock, rawJid)) return true;
+        const lid = rawJid ? rawJid.split('@')[0].split(':')[0] : '';
+        const num = senderPhone?.length >= 7 ? senderPhone : lid;
         if (!num) return false;
         if (isDeveloper(num)) return true;
-        if (lidPart && lidPart !== num && isDeveloper(lidPart)) return true;
-        return await isSudoForSession(sock, num);
+        if (lid && lid !== num && isDeveloper(lid)) return true;
+        return isSudoForSession(sock, num);
     }
 
     checkCooldown(commandName, key, isOwnerUser, isSudoUser) {
-        const command = this.getCommand(commandName);
-        if (!command?.cooldown) return { onCooldown: false };
-        if (isOwnerUser || isSudoUser) return { onCooldown: false };
-        const cooldownKey = `${commandName}_${key}`;
+        const cmd = getCommand(commandName);
+        if (!cmd?.cooldown || isOwnerUser || isSudoUser) return { onCooldown: false };
+        const cKey = `${commandName}::${key}`;
         const now = Date.now();
-        const cooldownMs = command.cooldown * 1000;
-        const expiry = this.cooldowns.get(cooldownKey);
-        if (expiry && now < expiry) {
-            return { onCooldown: true, timeLeft: ((expiry - now) / 1000).toFixed(1) };
-        }
-        this.cooldowns.set(cooldownKey, now + cooldownMs);
-        setTimeout(() => this.cooldowns.delete(cooldownKey), cooldownMs);
+        const ms = cmd.cooldown * 1000;
+        const exp = this.cooldowns.get(cKey);
+        if (exp && now < exp) return { onCooldown: true, timeLeft: ((exp - now) / 1000).toFixed(1) };
+        this.cooldowns.set(cKey, now + ms);
+        setTimeout(() => this.cooldowns.delete(cKey), ms);
         return { onCooldown: false };
     }
 
-    async checkPermissions(command, sock, message, from, isGroup, isGroupAdmin, isBotAdmin, isOwnerUser, isSudoUser) {
-        if (command.ownerOnly && !isOwnerUser) {
-            await sock.sendMessage(from, { text: '❌ This command is only available to the bot owner.' }, { quoted: message });
+    async checkPermissions(cmd, sock, message, from, isGroup, isGroupAdmin, isBotAdmin, isOwnerUser, isSudoUser) {
+        const role = cmd.role ?? 0;
+        const needsOwner = cmd.ownerOnly || role >= 2;
+        const needsAdmin = cmd.adminOnly || role === 1;
+
+        if (needsOwner && !isOwnerUser) {
+            await sock.sendMessage(from, { text: '❌ Owner only command.' }, { quoted: message });
             return false;
         }
-        if (command.sudoOnly && !isSudoUser && !isOwnerUser) {
-            await sock.sendMessage(from, { text: '❌ This command is only available to sudo users.' }, { quoted: message });
+        if (cmd.sudoOnly && !isSudoUser && !isOwnerUser) {
+            await sock.sendMessage(from, { text: '❌ Sudo only command.' }, { quoted: message });
             return false;
         }
-        if (command.groupOnly && !isGroup) {
+        if (cmd.groupOnly && !isGroup) {
             await sock.sendMessage(from, { text: '❌ This command can only be used in groups.' }, { quoted: message });
             return false;
         }
-        if (command.privateOnly && isGroup) {
+        if (cmd.privateOnly && isGroup) {
             await sock.sendMessage(from, { text: '❌ This command can only be used in private chat.' }, { quoted: message });
             return false;
         }
-        if (isGroup && command.adminOnly && !isGroupAdmin && !isOwnerUser && !isSudoUser) {
-            await sock.sendMessage(from, { text: '❌ This command requires group admin privileges.' }, { quoted: message });
+        if (isGroup && needsAdmin && !isGroupAdmin && !isOwnerUser && !isSudoUser) {
+            await sock.sendMessage(from, { text: '❌ Group admin only command.' }, { quoted: message });
             return false;
         }
-        if (isGroup && command.botAdminRequired && !isBotAdmin) {
-            await sock.sendMessage(from, { text: '❌ I need to be a group admin to use this command. Please promote me first.' }, { quoted: message });
+        if (isGroup && cmd.botAdminRequired && !isBotAdmin) {
+            await sock.sendMessage(from, { text: '❌ Bot must be group admin for this command.' }, { quoted: message });
             return false;
         }
         return true;
     }
 
-    recordCommandUsage(commandName, executionTime, success) {
-        if (!this.commandStats.has(commandName)) {
-            this.commandStats.set(commandName, { count: 0, successCount: 0, failureCount: 0, totalTime: 0 });
+    recordUsage(name, time, success) {
+        if (!this.commandStats.has(name)) {
+            this.commandStats.set(name, { count: 0, success: 0, fail: 0, totalTime: 0 });
         }
-        const stats = this.commandStats.get(commandName);
-        stats.count++;
-        success ? stats.successCount++ : stats.failureCount++;
-        stats.totalTime += executionTime;
-        try { recordUsage(commandName, executionTime, success); } catch {}
+        const s = this.commandStats.get(name);
+        s.count++;
+        success ? s.success++ : s.fail++;
+        s.totalTime += time;
+        try { recordUsage(name, time, success); } catch {}
     }
 
-    async handleCommand(sock, message, commandName, args) {
-        const startTime = Date.now();
+    async resolveSenderContext(sock, message) {
         const from = message.key.remoteJid;
         const fromMe = message.key.fromMe;
         const isGroup = from.endsWith('@g.us');
-
         let rawParticipant = '';
         let senderPhone = '';
-
         if (isGroup) {
             rawParticipant = message.key.participant || '';
-            if (fromMe) {
-                senderPhone = getBotPhoneNum(sock);
-                if (!senderPhone) senderPhone = await this.resolveParticipantPhone(sock, from, rawParticipant);
-            } else {
-                senderPhone = await this.resolveParticipantPhone(sock, from, rawParticipant);
-            }
+            senderPhone = fromMe
+                ? (getBotPhone(sock) || await this.resolvePhone(sock, from, rawParticipant))
+                : await this.resolvePhone(sock, from, rawParticipant);
         } else {
             rawParticipant = fromMe ? (sock?.user?.id || '') : from;
-            senderPhone = this.resolvePrivateSenderPhone(sock, fromMe, from, rawParticipant);
+            senderPhone = this.resolvePrivatePhone(sock, fromMe, from, rawParticipant);
         }
+        const senderJid = senderPhone ? `${senderPhone}@s.whatsapp.net` : (rawParticipant || from);
+        return { from, fromMe, isGroup, rawParticipant, senderPhone, senderJid };
+    }
 
-        const senderJid = senderPhone ? senderPhone + '@s.whatsapp.net' : (rawParticipant || from);
+    async handleCommand(sock, message, commandName, args) {
+        const t0 = Date.now();
+        const { from, fromMe, isGroup, rawParticipant, senderPhone, senderJid } = await this.resolveSenderContext(sock, message);
 
         try {
-            const command = this.getCommand(commandName);
-            if (!command) return false;
+            const cmd = getCommand(commandName);
+            if (!cmd) return false;
 
-            const isOwnerUser = await this.isOwner(senderPhone, message, sock, rawParticipant);
-            const isSudoUser = await this.isSudo(senderPhone, message, sock, rawParticipant);
-            const sessionControl = await getSessionControl(sock);
+            const isOwnerUser = await this.checkOwner(senderPhone, message, sock, rawParticipant);
+            const isSudoUser = await this.checkSudo(senderPhone, message, sock, rawParticipant);
 
-            const cooldownCheck = this.checkCooldown(commandName, senderPhone || from, isOwnerUser, isSudoUser);
-            if (cooldownCheck.onCooldown) {
-                await sock.sendMessage(from, {
-                    text: `⏳ Wait ${cooldownCheck.timeLeft}s before using this command again.`
-                }, { quoted: message });
+            if (!isOwnerUser && !isSudoUser) {
+                try {
+                    const { isGlobalBanned } = await import('../commands/admin/ban.js');
+                    if (await isGlobalBanned(senderJid)) {
+                        await sock.sendMessage(from, { text: '🚫 You are globally banned.' }, { quoted: message });
+                        return false;
+                    }
+                } catch {}
+            }
+
+            const session = await getSessionControl(sock);
+
+            const cd = this.checkCooldown(commandName, senderPhone || from, isOwnerUser, isSudoUser);
+            if (cd.onCooldown) {
+                await sock.sendMessage(from, { text: `⏳ Wait ${cd.timeLeft}s before using this again.` }, { quoted: message });
                 return false;
             }
 
             let isGroupAdmin = false;
             let isBotAdmin = false;
-
             if (isGroup) {
                 try {
                     [isGroupAdmin, isBotAdmin] = await Promise.all([
                         this.isGroupAdmin(sock, from, rawParticipant),
-                        this.isBotGroupAdmin(sock, from)
+                        this.isBotAdmin(sock, from),
                     ]);
-                } catch {
-                    isGroupAdmin = false;
-                    isBotAdmin = false;
-                }
+                } catch {}
                 if (isOwnerUser || isSudoUser) isGroupAdmin = true;
-            } else {
-                if (isOwnerUser || isSudoUser) {
-                    isGroupAdmin = true;
-                    isBotAdmin = true;
-                }
+            } else if (isOwnerUser || isSudoUser) {
+                isGroupAdmin = true;
+                isBotAdmin = true;
             }
 
-            const hasPermission = await this.checkPermissions(
-                command, sock, message, from, isGroup, isGroupAdmin, isBotAdmin, isOwnerUser, isSudoUser
-            );
-            if (!hasPermission) {
-                this.recordCommandUsage(commandName, Date.now() - startTime, false);
-                return false;
-            }
+            const ok = await this.checkPermissions(cmd, sock, message, from, isGroup, isGroupAdmin, isBotAdmin, isOwnerUser, isSudoUser);
+            if (!ok) { this.recordUsage(commandName, Date.now() - t0, false); return false; }
 
-            if (command.args && args.length < (command.minArgs || 1)) {
-                const activePrefix = sessionControl.prefix || config.prefix;
+            if (cmd.args && args.length < (cmd.minArgs || 1)) {
+                const prefix = session.prefix || config.prefix;
                 await sock.sendMessage(from, {
-                    text: `❌ Invalid usage.\n\nUsage: ${activePrefix}${command.usage || command.name}\nExample: ${activePrefix}${command.example || command.name}`
+                    text: `❌ Usage: ${prefix}${cmd.usage || cmd.name}\nExample: ${prefix}${cmd.example || cmd.name}`
                 }, { quoted: message });
                 return false;
             }
 
-            if (typeof command.execute !== 'function') {
-                logger.error(`Command ${commandName} has no execute function`);
+            const entry = cmd.onStart || cmd.execute;
+            if (typeof entry !== 'function') {
+                logger.error(`${commandName} has no onStart/execute`);
                 return false;
             }
 
             const fontSock = createFontSock(sock, senderJid);
+            const prefix = session.prefix || config.prefix;
+            const ctx = buildCtx(sock, fontSock, message, args, cmd, commandName, from, senderJid, isGroup, isGroupAdmin, isBotAdmin, isOwnerUser, isSudoUser, prefix);
 
-            await command.execute({
-                sock: fontSock,
-                message,
-                args,
-                command,
-                commandName,
-                from,
-                sender: senderJid,
-                isGroup,
-                isGroupAdmin,
-                isBotAdmin,
-                prefix: sessionControl.prefix || config.prefix,
-                pushName: message.pushName,
-                quoted: message.message?.extendedTextMessage?.contextInfo?.quotedMessage,
-                isOwner: isOwnerUser,
-                isSudo: isSudoUser
-            });
-
-            const executionTime = Date.now() - startTime;
-            this.recordCommandUsage(commandName, executionTime, true);
-            logger.info(`Command ${commandName} executed in ${executionTime}ms`);
+            await entry(ctx);
+            this.recordUsage(commandName, Date.now() - t0, true);
+            logger.info(`${commandName} executed in ${Date.now() - t0}ms`);
             return true;
 
-        } catch (error) {
-            const executionTime = Date.now() - startTime;
-            this.recordCommandUsage(commandName, executionTime, false);
-            logger.error(`Command execution error [${commandName}]:`, error);
-            try {
-                await sock.sendMessage(from, { text: `❌ Error: ${error.message}` }, { quoted: message });
-            } catch {}
+        } catch (err) {
+            this.recordUsage(commandName, Date.now() - t0, false);
+            logger.error(`handleCommand [${commandName}]:`, err);
+            try { await sock.sendMessage(from, { text: `❌ ${err.message}` }, { quoted: message }); } catch {}
             return false;
         }
+    }
+
+    async handleOnReply(sock, message, stanzaId) {
+        const ab = getAmazingBot();
+        const entry = ab.onReply.get(stanzaId);
+        if (!entry) return false;
+
+        const commandName = entry.commandName;
+        const cmd = commandName ? getCommand(commandName) : null;
+        if (!cmd || typeof cmd.onReply !== 'function') return false;
+
+        const { from, isGroup, rawParticipant, senderPhone, senderJid } = await this.resolveSenderContext(sock, message);
+        const isOwnerUser = await this.checkOwner(senderPhone, message, sock, rawParticipant);
+        const isSudoUser = await this.checkSudo(senderPhone, message, sock, rawParticipant);
+        const isGroupAdmin = isGroup ? await this.isGroupAdmin(sock, from, rawParticipant) : isOwnerUser;
+        const isBotAdmin = isGroup ? await this.isBotAdmin(sock, from) : isOwnerUser;
+        const session = await getSessionControl(sock);
+        const fontSock = createFontSock(sock, senderJid);
+        const prefix = session.prefix || config.prefix;
+
+        const ctx = buildCtx(sock, fontSock, message, [], cmd, commandName, from, senderJid, isGroup, isGroupAdmin, isBotAdmin, isOwnerUser, isSudoUser, prefix);
+        try { await cmd.onReply({ ...ctx, Reply: entry }); }
+        catch (err) { logger.error(`onReply [${commandName}]:`, err); }
+        return true;
+    }
+
+    async handleOnReaction(sock, message) {
+        const reactionMsg = message.message?.reactionMessage;
+        if (!reactionMsg) return false;
+        const reactedId = reactionMsg.key?.id;
+        if (!reactedId) return false;
+
+        const ab = getAmazingBot();
+        const entry = ab.onReaction.get(reactedId);
+        if (!entry) return false;
+
+        const commandName = entry.commandName;
+        const cmd = commandName ? getCommand(commandName) : null;
+        if (!cmd || typeof cmd.onReaction !== 'function') return false;
+
+        const { from, isGroup, rawParticipant, senderPhone, senderJid } = await this.resolveSenderContext(sock, message);
+        const isOwnerUser = await this.checkOwner(senderPhone, message, sock, rawParticipant);
+        const isSudoUser = await this.checkSudo(senderPhone, message, sock, rawParticipant);
+        const isGroupAdmin = isGroup ? await this.isGroupAdmin(sock, from, rawParticipant) : isOwnerUser;
+        const isBotAdmin = isGroup ? await this.isBotAdmin(sock, from) : isOwnerUser;
+        const session = await getSessionControl(sock);
+        const fontSock = createFontSock(sock, senderJid);
+        const prefix = session.prefix || config.prefix;
+
+        const ctx = buildCtx(sock, fontSock, message, [], cmd, commandName, from, senderJid, isGroup, isGroupAdmin, isBotAdmin, isOwnerUser, isSudoUser, prefix);
+        try {
+            await cmd.onReaction({
+                ...ctx,
+                Reaction: { ...entry, emoji: reactionMsg.text || '', reactedToKey: reactionMsg.key },
+            });
+        } catch (err) { logger.error(`onReaction [${commandName}]:`, err); }
+        return true;
+    }
+
+    async handleOnChat(sock, message, text) {
+        const ab = getAmazingBot();
+        const chatCmds = ab.onChat || [];
+        if (!chatCmds.length) return;
+
+        const { from, isGroup, rawParticipant, senderPhone, senderJid } = await this.resolveSenderContext(sock, message);
+        const isOwnerUser = await this.checkOwner(senderPhone, message, sock, rawParticipant);
+        const isSudoUser = await this.checkSudo(senderPhone, message, sock, rawParticipant);
+        const session = await getSessionControl(sock);
+
+        for (const { commandName, handler } of chatCmds) {
+            const cmd = getCommand(commandName);
+            if (!cmd) continue;
+            const isGroupAdmin = isGroup ? await this.isGroupAdmin(sock, from, rawParticipant) : isOwnerUser;
+            const isBotAdmin = isGroup ? await this.isBotAdmin(sock, from) : isOwnerUser;
+            const fontSock = createFontSock(sock, senderJid);
+            const prefix = session.prefix || config.prefix;
+            const ctx = buildCtx(sock, fontSock, message, text.trim().split(/\s+/), cmd, commandName, from, senderJid, isGroup, isGroupAdmin, isBotAdmin, isOwnerUser, isSudoUser, prefix);
+            try { await handler({ ...ctx, chatText: text }); }
+            catch (err) { logger.error(`onChat [${commandName}]:`, err); }
+        }
+    }
+
+    async handleEvent(sock, eventCtx) {
+        const ab = getAmazingBot();
+        if (!ab.eventCommands.size) return;
+        for (const [name, cmd] of ab.eventCommands) {
+            if (typeof cmd.onStart !== 'function') continue;
+            try {
+                const result = await cmd.onStart({ sock, ...eventCtx });
+                if (typeof result === 'function') await result();
+                logger.debug(`Event script [${name}] ran for action "${eventCtx.action}"`);
+            } catch (err) {
+                logger.error(`Event script [${name}] error:`, err);
+            }
+        }
+    }
+
+    registerOnChatCommands() {
+        const ab = getAmazingBot();
+        ab.onChat = [];
+        for (const cmd of getAllCommands()) {
+            if (typeof cmd.onChat === 'function') {
+                ab.onChat.push({ commandName: cmd.name, handler: cmd.onChat });
+            }
+        }
+    }
+
+    async isGroupAdmin(sock, groupJid, participantJid) {
+        try {
+            const meta = await this.getGroupMeta(sock, groupJid, true);
+            const p = this.findParticipant(meta?.participants || [], participantJid);
+            return !!(p?.admin);
+        } catch { return false; }
+    }
+
+    async isBotAdmin(sock, groupJid) {
+        try {
+            const meta = await this.getGroupMeta(sock, groupJid, true);
+            const botPhone = getBotPhone(sock);
+            const botLid = getBotLid(sock);
+            for (const p of meta?.participants || []) {
+                const pStr = String(p.id || '');
+                const pPhone = isLid(pStr) ? '' : rawNum(pStr);
+                const pLid = pStr.split('@')[0].split(':')[0];
+                if ((botPhone && pPhone && botPhone === pPhone) || (botLid && pLid && botLid === pLid)) {
+                    return !!(p.admin);
+                }
+            }
+            return false;
+        } catch { return false; }
     }
 
     getCommandStats() {
-        const stats = { totalExecutions: 0, successfulExecutions: 0, failedExecutions: 0, commandUsage: {} };
-        this.commandStats.forEach((data, name) => {
-            stats.totalExecutions += data.count;
-            stats.successfulExecutions += data.successCount;
-            stats.failedExecutions += data.failureCount;
-            stats.commandUsage[name] = {
-                count: data.count,
-                successCount: data.successCount,
-                failureCount: data.failureCount,
-                avgTime: data.count > 0 ? Math.round(data.totalTime / data.count) : 0
-            };
+        const out = { total: 0, success: 0, fail: 0, commands: {} };
+        this.commandStats.forEach((s, name) => {
+            out.total += s.count;
+            out.success += s.success;
+            out.fail += s.fail;
+            out.commands[name] = { ...s, avgTime: s.count ? Math.round(s.totalTime / s.count) : 0 };
         });
-        return stats;
+        return out;
     }
 
     getTopCommands(limit = 5) {
-        return Object.entries(this.getCommandStats().commandUsage)
+        return Object.entries(this.getCommandStats().commands)
             .sort((a, b) => b[1].count - a[1].count)
             .slice(0, limit)
-            .map(([name, data]) => ({
-                name,
-                used: data.count,
-                successRate: data.count > 0 ? ((data.successCount / data.count) * 100).toFixed(1) : '0'
-            }));
+            .map(([name, s]) => ({ name, used: s.count, successRate: s.count ? ((s.success / s.count) * 100).toFixed(1) : '0' }));
     }
 
-    async reloadCommand(commandName) {
-        try {
-            await commandManager.reloadCommand(commandName);
-            return true;
-        } catch (error) {
-            logger.error(`Failed to reload command ${commandName}:`, error);
-            return false;
-        }
+    async reloadCommand(name) {
+        try { await commandManager.reloadCommand(name); this.registerOnChatCommands(); return true; }
+        catch (err) { logger.error(`Reload failed [${name}]:`, err); return false; }
     }
 }
 

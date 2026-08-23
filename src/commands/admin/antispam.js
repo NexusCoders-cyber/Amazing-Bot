@@ -1,85 +1,44 @@
-import fs from 'fs-extra';
-import path from 'path';
+import antiSpamModule from '../../utils/antiSpam.js';
 
-const FILE = path.join(process.cwd(), 'data', 'antispam.json');
-const msgTracker = new Map();
-
-async function load() { try { await fs.ensureDir(path.dirname(FILE)); return await fs.readJSON(FILE); } catch { return {}; } }
-async function save(d) { try { await fs.ensureDir(path.dirname(FILE)); await fs.writeJSON(FILE, d, { spaces: 2 }); } catch {} }
+const { antiSpam, processSpamAction } = antiSpamModule;
 
 export async function checkSpam(sock, message) {
-    const from = message.key.remoteJid;
-    if (!from?.endsWith('@g.us') || message.key.fromMe) return false;
-    const settings = await load();
-    const cfg = settings[from];
-    if (!cfg?.enabled) return false;
+    const from = message?.key?.remoteJid;
+    if (!from?.endsWith('@g.us')) return false;
+    const sender = message?.key?.participant;
+    if (!sender || !antiSpam) return false;
 
-    const sender = message.key.participant || message.key.remoteJid;
+    const msg = message?.message;
+    const text = msg?.conversation || msg?.extendedTextMessage?.text || '';
+
     try {
-        const meta = await sock.groupMetadata(from);
-        const normalizedSender = sender.split(':')[0].split('@')[0];
-        const participant = meta.participants.find(p => p.id.split(':')[0].split('@')[0] === normalizedSender);
-        if (participant?.admin) return false;
-    } catch {}
-
-    const key = `${from}_${sender}`;
-    const now = Date.now();
-    const windowMs = (cfg.windowSeconds || 5) * 1000;
-    const maxMsgs = cfg.maxMessages || 5;
-
-    let track = msgTracker.get(key) || { count: 0, start: now };
-    if (now - track.start > windowMs) track = { count: 0, start: now };
-    track.count++;
-    msgTracker.set(key, track);
-
-    if (track.count > maxMsgs) {
-        try { await sock.groupParticipantsUpdate(from, [sender], 'remove'); } catch {}
-        msgTracker.delete(key);
-        try {
-            await sock.sendMessage(from, {
-                text: `⚡ @${sender.split('@')[0].split(':')[0]} was removed for spamming.`,
-                mentions: [sender]
-            });
-        } catch {}
+        const result = antiSpam.checkSpam(sender, text, { groupId: from, isGroup: true });
+        if (!result?.isSpam) return false;
+        if (processSpamAction) await processSpamAction(sock, message, result, { groupId: from });
         return true;
-    }
-    return false;
+    } catch { return false; }
 }
 
 export default {
-    name: 'antispam',
-    aliases: ['nospam', 'spamprotect'],
-    category: 'admin',
-    description: 'Toggle auto-kick for members who spam messages too fast',
-    usage: 'antispam <on|off|status> [maxMsgs] [windowSeconds]',
-    example: 'antispam on\nantispam on 5 3',
-    cooldown: 3,
-    groupOnly: true,
-    adminOnly: true,
-
-    async execute({ sock, message, from, args }) {
-        const action = args[0]?.toLowerCase();
-        const data = await load();
-
-        if (action === 'status' || action === 'check') {
-            const cfg = data[from];
-            return await sock.sendMessage(from, {
-                text: `⚡ Anti-Spam\n\nStatus: ${cfg?.enabled ? '✅ Enabled' : '❌ Disabled'}${cfg?.enabled ? `\nMax msgs: ${cfg.maxMessages || 5} per ${cfg.windowSeconds || 5}s` : ''}`
-            }, { quoted: message });
+    config: {
+        name: 'antispam',
+        aliases: ['nospam', 'spam'],
+        author: 'Raphael Ilom',
+        version: '1.0',
+        shortDescription: 'Anti-spam protection for groups',
+        category: 'admin',
+        coolDown: 3,
+        role: 1,
+        guide: { en: '{prefix}antispam stats' },
+    },
+    async onStart({ args, from, reply, isGroup, isGroupAdmin }) {
+        if (!isGroup) return reply('Group only.');
+        if (!isGroupAdmin) return reply('Admin only.');
+        const sub = (args[0] || '').toLowerCase();
+        if (sub === 'stats') {
+            const stats = antiSpam?.getGlobalStats?.() || {};
+            return reply(`Violations: ${stats.totalViolations || 0}\nActive: ${stats.activeUsers || 0}`);
         }
-
-        if (!['on', 'off'].includes(action)) {
-            return await sock.sendMessage(from, { text: '❌ Usage: antispam on|off|status' }, { quoted: message });
-        }
-
-        const enabled = action === 'on';
-        const maxMessages = parseInt(args[1]) || 5;
-        const windowSeconds = parseInt(args[2]) || 5;
-        data[from] = { enabled, maxMessages, windowSeconds };
-        await save(data);
-
-        await sock.sendMessage(from, {
-            text: `⚡ Anti-Spam ${enabled ? '✅ Enabled' : '❌ Disabled'}${enabled ? `\nSettings: ${maxMessages} messages per ${windowSeconds} seconds` : ''}`
-        }, { quoted: message });
-    }
+        reply('Antispam is active.\nUse: antispam stats to view violations.');
+    },
 };

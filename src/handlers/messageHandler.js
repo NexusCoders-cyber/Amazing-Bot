@@ -17,9 +17,11 @@ import { getWatchConfig, resolvePersonalTarget, shouldPassScope } from '../utils
 import { isAntiGmEnabled } from '../commands/admin/antigm.js';
 import { getAutoStatusConfig } from '../commands/admin/autostatus.js';
 import { getAutomationConfig } from '../utils/automationStore.js';
-import { getStickerActionByHash, getStickerHashFromMessage } from '../utils/stickerVault.js';
+import { getStickerActionByHash, getStickerHashFromMessage, collectSticker } from '../utils/stickerVault.js';
 import { getStickerCmdByFingerprint } from '../services/databaseService.js';
 import { getStickerFingerprint } from '../commands/owner/setcmd.js';
+import { getAmazingBot } from '../utils/amazingbot.js';
+import threadsData from '../utils/threadsData.js';
 
 let autoDownloadHandler = null;
 const MESSAGE_AUDIT_CACHE_LIMIT = 2000;
@@ -556,6 +558,12 @@ class MessageHandler {
                 } catch {}
             }
 
+            if (message.message?.reactionMessage) {
+                const cmdHandler = await this.initializeCommandHandler();
+                if (cmdHandler) try { await cmdHandler.handleOnReaction(sock, message); } catch {}
+                return;
+            }
+
             const messageContent = this.extractMessageContent(message);
             if (!messageContent) return;
             try { await collectSticker(sock, message, from); } catch {}
@@ -628,7 +636,6 @@ class MessageHandler {
                         text: `🚫 @${normalizeJidRaw(rawParticipant).split('@')[0]} removed by AntiHijack.`,
                         mentions: [rawParticipant]
                     }, { quoted: message });
-                    await enforceOwnerOnlyAdmin(sock, from, antiHijack.ownerJid).catch(() => {});
                     return;
                 }
 
@@ -663,11 +670,32 @@ class MessageHandler {
             const autoHandled = await handleAutoDownload(sock, message, from, senderJid, text);
             if (autoHandled) return;
 
+            if (isGroup && hasText && text) {
+                try {
+                    const { handleGroupFeatures } = await import('../utils/groupFeatureHandler.js');
+                    if (await handleGroupFeatures(sock, from, senderJid, text, message)) return;
+                } catch {}
+            }
+
+
             if (!hasText) return;
 
             if (replyHandler && typeof replyHandler.handler === 'function') {
                 try { await replyHandler.handler(text, message); return; }
                 catch (error) { logger.error('Reply handler error:', error); }
+            }
+
+            if (stanzaId) {
+                const ab = getAmazingBot();
+                if (ab.onReply.has(stanzaId)) {
+                    const cmdHandler = await this.initializeCommandHandler();
+                    if (cmdHandler) {
+                        try {
+                            const handled = await cmdHandler.handleOnReply(sock, message, stanzaId);
+                            if (handled) return;
+                        } catch (err) { logger.error('AmazingBot onReply error:', err); }
+                    }
+                }
             }
 
             if (chatHandler && typeof chatHandler.handler === 'function') {
@@ -681,7 +709,13 @@ class MessageHandler {
             if (!text?.length) return;
 
             const ownerNoPrefix = config.ownerNoPrefix && (isOwnerUser || isSudoUser);
-            const activePrefix = sessionControl.prefix || config.prefix;
+            let activePrefix = sessionControl.prefix || config.prefix;
+            if (isGroup) {
+                try {
+                    const thread = await threadsData.get(from);
+                    if (thread?.data?.prefix) activePrefix = thread.data.prefix;
+                } catch {}
+            }
             const isPrefixed = text.startsWith(activePrefix);
 
             const commandHandler = await this.initializeCommandHandler();
@@ -703,7 +737,12 @@ class MessageHandler {
                             this.stopRecording(from);
                             try { await sock.sendPresenceUpdate('available', from); } catch {}
                         }
+                        return;
                     }
+                }
+                const ab = getAmazingBot();
+                if (ab.onChat?.length) {
+                    try { await commandHandler.handleOnChat(sock, message, text); } catch {}
                 }
                 return;
             }
@@ -730,6 +769,27 @@ class MessageHandler {
             if (!commandName) {
                 this.stopTyping(from);
                 this.stopRecording(from);
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                const mem = process.memoryUsage();
+                const ramUsed = (mem.heapUsed / 1024 / 1024).toFixed(1);
+                const totalCmds = commandHandler.getCommandCount();
+                const botName = config.botName || 'AmazingBot';
+                await sock.sendMessage(from, {
+                    text: [
+                        `${botName}`,
+                        `Prefix   : ${activePrefix}`,
+                        `Commands : ${totalCmds}`,
+                        `Time     : ${timeStr}`,
+                        `Date     : ${dateStr}`,
+                        `RAM      : ${ramUsed} MB`,
+                        `Node     : ${process.version}`,
+                        ``,
+                        `Type ${activePrefix}help to see all commands`,
+                        `Type ${activePrefix}help <command> for command info`,
+                    ].join('\n')
+                }, { quoted: message });
                 return;
             }
 

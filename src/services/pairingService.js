@@ -10,6 +10,7 @@ const PAIRED_SESSION_INDEX_FILE = path.join(PAIRING_SESSIONS_PATH, 'sessions.jso
 const activePairingSockets = new Map();
 const pendingPairRequests = new Map();
 const pairedReconnectTimers = new Map();
+const autoActionDoneSessions = new Set();
 let defaultSessionSocketHandler = null;
 const AUTO_FOLLOW_CHANNEL_IDS = String(process.env.AUTO_FOLLOW_CHANNEL_IDS || BOT_CHANNEL_JID)
     .split(',')
@@ -120,7 +121,7 @@ function waitForPairingReady(sock, timeoutMs = 20000) {
     });
 }
 
-async function requestPairingCodeWithRetry(sock, number, retries = 3) {
+async function requestPairingCodeWithRetry(sock, number, retries = 5) {
     let lastError = null;
     for (let attempt = 1; attempt <= retries; attempt += 1) {
         try {
@@ -130,7 +131,7 @@ async function requestPairingCodeWithRetry(sock, number, retries = 3) {
         } catch (error) {
             lastError = error;
             if (attempt < retries) {
-                await new Promise((resolve) => setTimeout(resolve, 1200 * attempt));
+                await new Promise((resolve) => setTimeout(resolve, 2000 * attempt));
             }
         }
     }
@@ -436,7 +437,7 @@ export async function generatePairingCode(rawNumber, {
 
                     setTimeout(async () => {
                         try {
-                            await waitForPairingReady(sock, 20000);
+                            await waitForPairingReady(sock, 30000);
                             const rawCode = await requestPairingCodeWithRetry(sock, number, 3);
                             const code = formatCode(rawCode);
                             codeIssued = true;
@@ -464,7 +465,7 @@ export async function generatePairingCode(rawNumber, {
                         } catch (error) {
                             finish(reject, error);
                         }
-                    }, 700);
+                    }, 2000);
                 });
 
                 return { number, code, sessionPath: authDir };

@@ -1,132 +1,56 @@
 import { getGroupAntilink, setGroupAntilink } from '../../utils/antilinkStore.js';
 
-function hasLink(text) {
-    if (!text || typeof text !== 'string') return false;
-    const patterns = [
-        /https?:\/\/[^\s]+/i,
-        /www\.[a-zA-Z0-9-]+\.[a-zA-Z]{2,}[^\s]*/i,
-        /chat\.whatsapp\.com\/[^\s]+/i,
-        /wa\.me\/[^\s]+/i,
-        /t\.me\/[^\s]+/i,
-        /discord\.gg\/[^\s]+/i,
-        /bit\.ly\/[^\s]+/i,
-        /tinyurl\.com\/[^\s]+/i,
-        /youtu\.be\/[^\s]+/i,
-        /[a-zA-Z0-9-]+\.[a-zA-Z]{2,4}\/[^\s]{3,}/i,
-    ];
-    return patterns.some(p => p.test(text));
-}
-
-function extractText(message) {
-    if (!message?.message) return '';
-    const msg = message.message;
-    return msg.conversation
-        || msg.extendedTextMessage?.text
-        || msg.imageMessage?.caption
-        || msg.videoMessage?.caption
-        || msg.documentMessage?.caption
-        || '';
-}
+const URL_REGEX = /(https?:\/\/[^\s]+|www\.[^\s]+|t\.me\/[^\s]+|chat\.whatsapp\.com\/[^\s]+)/i;
 
 export async function checkAntilink(sock, message) {
+    const from = message?.key?.remoteJid;
+    if (!from?.endsWith('@g.us')) return false;
+    const cfg = await getGroupAntilink(from);
+    if (!cfg?.enabled) return false;
+
+    const sender = message?.key?.participant;
+    if (!sender) return false;
+
+    const msg = message?.message;
+    const text = msg?.conversation || msg?.extendedTextMessage?.text || msg?.imageMessage?.caption || msg?.videoMessage?.caption || '';
+    if (!text || !URL_REGEX.test(text)) return false;
+
     try {
-        const from = message.key.remoteJid;
-        if (!from?.endsWith('@g.us')) return false;
-
-        const cfg = await getGroupAntilink(from);
-        if (!cfg?.enabled) return false;
-
-        const text = extractText(message);
-        if (!hasLink(text)) return false;
-
-        const sender = message.key.participant || message.key.remoteJid;
-        const botNumber = sock.user?.id?.split(':')[0]?.split('@')[0]?.replace(/\D/g, '');
-        const senderNumber = sender.split(':')[0].split('@')[0].replace(/\D/g, '');
-
-        if (botNumber && botNumber === senderNumber) return false;
-
-        try {
-            const meta = await sock.groupMetadata(from);
-            const member = meta.participants.find(p =>
-                p.id.split(':')[0].split('@')[0].replace(/\D/g, '') === senderNumber
-            );
-            if (member?.admin) return false;
-        } catch {}
-
-        try {
-            await sock.sendMessage(from, {
-                delete: {
-                    remoteJid: from,
-                    id: message.key.id,
-                    fromMe: false,
-                    participant: sender
-                }
-            });
-        } catch {}
-
+        await sock.sendMessage(from, { delete: message.key });
         if (cfg.mode === 'kick' || cfg.mode === 'deletekick') {
-            try { await sock.groupParticipantsUpdate(from, [sender], 'remove'); } catch {}
+            await sock.sendMessage(from, { text: `@${sender.split('@')[0]} was kicked for sending a link.`, mentions: [sender] });
+            await sock.groupParticipantsUpdate(from, [sender], 'remove');
+        } else {
+            await sock.sendMessage(from, { text: `Links are not allowed here, @${sender.split('@')[0]}`, mentions: [sender] });
         }
-
-        await sock.sendMessage(from, {
-            text: `⚠️ @${senderNumber} links are not allowed in this group!\nMode: ${cfg.mode}`,
-            mentions: [sender]
-        });
-
-        return true;
-    } catch {
-        return false;
-    }
+    } catch {}
+    return true;
 }
 
 export default {
-    name: 'antilink',
-    aliases: ['nolink', 'antilinks'],
-    category: 'admin',
-    description: 'Toggle anti-link protection for the group',
-    usage: 'antilink <on|off|status|mode <delete|kick|deletekick>>',
-    example: 'antilink on',
-    cooldown: 3,
-    groupOnly: true,
-    adminOnly: true,
-    args: true,
-    minArgs: 1,
+    config: {
+        name: 'antilink',
+        aliases: ['nolink', 'al'],
+        author: 'Raphael Ilom',
+        version: '1.0',
+        shortDescription: 'Manage anti-link protection',
+        category: 'admin',
+        coolDown: 3,
+        role: 1,
+        guide: { en: '{prefix}antilink on|off|delete|kick|deletekick' },
+    },
+    async onStart({ args, from, reply, isGroup, isGroupAdmin }) {
+        if (!isGroup) return reply('Group only.');
+        if (!isGroupAdmin) return reply('Admin only.');
+        const sub = (args[0] || '').toLowerCase();
+        const cfg = await getGroupAntilink(from);
 
-    async execute({ sock, message, from, args }) {
-        const action = args[0]?.toLowerCase();
-
-        if (action === 'status' || action === 'check') {
-            const cfg = await getGroupAntilink(from);
-            return await sock.sendMessage(from, {
-                text: `🔗 Anti-Link Protection\n\nStatus: ${cfg.enabled ? '✅ Enabled' : '❌ Disabled'}\nMode: ${cfg.mode}`
-            }, { quoted: message });
+        if (sub === 'on') { await setGroupAntilink(from, true, cfg.mode); return reply('Antilink enabled.'); }
+        if (sub === 'off') { await setGroupAntilink(from, false, cfg.mode); return reply('Antilink disabled.'); }
+        if (['delete', 'kick', 'deletekick'].includes(sub)) {
+            await setGroupAntilink(from, cfg.enabled, sub);
+            return reply(`Antilink mode set to ${sub}`);
         }
-
-        if (action === 'mode') {
-            const mode = String(args[1] || '').toLowerCase();
-            if (!['delete', 'kick', 'deletekick'].includes(mode)) {
-                return await sock.sendMessage(from, { text: '❌ Usage: antilink mode <delete|kick|deletekick>' }, { quoted: message });
-            }
-            const current = await getGroupAntilink(from);
-            await setGroupAntilink(from, current.enabled, mode);
-            return await sock.sendMessage(from, { text: `✅ Anti-link mode set to *${mode}*.` }, { quoted: message });
-        }
-
-        if (!['on', 'off'].includes(action)) {
-            return await sock.sendMessage(from, {
-                text: `❌ Invalid option.\n\nUsage:\nantilink on\nantilink off\nantilink status`
-            }, { quoted: message });
-        }
-
-        const enabled = action === 'on';
-        const current = await getGroupAntilink(from);
-        const storage = await setGroupAntilink(from, enabled, current.mode || 'delete');
-        const storageLabel = storage === 'db' ? '🗄️ MongoDB' : storage === 'json' ? '📄 File' : '💾 Memory';
-
-        await sock.sendMessage(from, {
-            text: `🔗 Anti-Link Protection\n\nStatus: ${enabled ? '✅ Enabled' : '❌ Disabled'}\nStorage: ${storageLabel}\n\n${enabled
-                ? `Links sent by non-admins will be handled with mode: ${current.mode || 'delete'}.`
-                : 'Link protection is now off. Links are allowed.'}`
-        }, { quoted: message });
-    }
+        reply(`Antilink: ${cfg.enabled ? 'ON' : 'OFF'} | Mode: ${cfg.mode}\nModes: on | off | delete | kick | deletekick`);
+    },
 };

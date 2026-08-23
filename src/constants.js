@@ -1,7 +1,7 @@
 const BOT_VERSION = '2.0.0';
-const BOT_NAME = 'ILOM Bot';
-const BOT_AUTHOR = 'Ilom';
-const BOT_DESCRIPTION = 'ILOM Bot v2 — Multi-Device WhatsApp Bot by Ilom';
+const BOT_NAME = 'AmazingBot';
+const BOT_AUTHOR = 'Raphael Ilom';
+const BOT_DESCRIPTION = 'AmazingBot v2 - Multi-Device WhatsApp Bot by Raphael Ilom';
 
 const MESSAGE_TYPES = {
     TEXT: 'text',

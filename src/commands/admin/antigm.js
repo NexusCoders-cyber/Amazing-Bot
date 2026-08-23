@@ -1,40 +1,35 @@
-const store = global.antiGmStore || (global.antiGmStore = new Map());
+import fs from 'fs-extra';
+import path from 'path';
 
-export function isAntiGmEnabled(chatId) {
-  const row = store.get(chatId);
-  if (!row) return false;
-  if (row.expiresAt && Date.now() > row.expiresAt) { store.delete(chatId); return false; }
-  return row.enabled === true;
-}
+const FILE = path.join(process.cwd(), 'data', 'antigm.json');
+let _data = null;
+function load() { if (_data) return _data; try { _data = fs.readJsonSync(FILE); } catch { _data = {}; } return _data; }
+function save() { fs.ensureDirSync(path.dirname(FILE)); fs.writeJsonSync(FILE, _data, { spaces: 2 }); }
 
-function parseDuration(input = '') {
-  const m = String(input).trim().match(/^(\d+)([smhd])$/i);
-  if (!m) return 0;
-  const n = Number(m[1]);
-  const u = m[2].toLowerCase();
-  const mult = u === 's' ? 1000 : u === 'm' ? 60000 : u === 'h' ? 3600000 : 86400000;
-  return n * mult;
+export function isAntiGmEnabled(jid) {
+    return !!(load()[jid]?.enabled);
 }
 
 export default {
-  name: 'antigm', aliases: ['antistatusmention', 'antigroupmention'], category: 'admin',
-  description: 'Delete messages that mention status/newsletter tags in group',
-  usage: 'antigroupmention on|off|<1h>', groupOnly: true, adminOnly: true, botAdminRequired: true, cooldown: 2,
-  async execute({ sock, message, from, args }) {
-    const action = String(args[0] || '').toLowerCase();
-    if (action === 'on') {
-      store.set(from, { enabled: true, expiresAt: 0 });
-      return sock.sendMessage(from, { text: '🛡️ *Antigroupmention Status:* ✅ ON' }, { quoted: message });
-    }
-    if (action === 'off') {
-      store.delete(from);
-      return sock.sendMessage(from, { text: '🛡️ *Antigroupmention Status:* ❌ OFF' }, { quoted: message });
-    }
-    const dur = parseDuration(action);
-    if (dur > 0) {
-      store.set(from, { enabled: true, expiresAt: Date.now() + dur });
-      return sock.sendMessage(from, { text: `🛡️ *Antigroupmention Status:* ✅ ON\n⏱️ Timer: ${action}` }, { quoted: message });
-    }
-    return sock.sendMessage(from, { text: 'Usage:\n.antigroupmention on\n.antigroupmention off\n.antigroupmention 1h (set timer)' }, { quoted: message });
-  }
+    config: {
+        name: 'antigm',
+        aliases: ['antigroup'],
+        author: 'Raphael Ilom',
+        version: '1.0',
+        shortDescription: 'Prevent bot from responding when not called',
+        category: 'admin',
+        coolDown: 3,
+        role: 1,
+        guide: { en: '{prefix}antigm on|off' },
+    },
+    async onStart({ args, from, reply, isGroup, isGroupAdmin }) {
+        if (!isGroup) return reply('Group only.');
+        if (!isGroupAdmin) return reply('Admin only.');
+        const d = load();
+        if (!d[from]) d[from] = { enabled: false };
+        const sub = (args[0] || '').toLowerCase();
+        if (sub === 'on') { d[from].enabled = true; save(); return reply('Anti-GM enabled. Bot will not respond unless called.'); }
+        if (sub === 'off') { d[from].enabled = false; save(); return reply('Anti-GM disabled.'); }
+        reply(`Anti-GM: ${d[from].enabled ? 'ON' : 'OFF'}`);
+    },
 };

@@ -756,11 +756,10 @@ export async function startTelegramPairBot({
 
         try {
             const existingStore = await loadStore();
-            const adminUser = isAdmin(user.id, runtimeAdminIds);
-            const userPairs = (existingStore.pairs || []).filter((x) => x.tgUserId === String(user.id));
-            if (!adminUser && userPairs.length > 0) {
-                return sendText(chatId, '❌ You can only pair once with this bot. Ask an admin to add your Telegram ID for unlimited pairing. Use /pairs to view your existing pair.');
-            }
+            existingStore.pairs = (existingStore.pairs || []).filter(
+                (x) => !(x.tgUserId === String(user.id) && ['failed', 'creating_code'].includes(x.status))
+            );
+            await saveStore(existingStore);
             await sendText(chatId, '⏳ Generating your pairing code, please wait...');
             const store = await loadStore();
             store.chats = Array.from(new Set([...(store.chats || []), String(chatId)]));

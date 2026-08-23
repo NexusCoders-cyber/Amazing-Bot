@@ -126,7 +126,7 @@ if (sessions.length === 0) {
     process.exit(0);
 }
 
-console.log(`ILOM Bot — Multi-Session Launcher`);
+console.log(`AmazingBot — Multi-Session Launcher`);
 console.log(`Starting ${sessions.length} session(s)...\n`);
 
 const childProcesses = [];
@@ -139,8 +139,7 @@ for (const session of sessions) {
         SESSION_ID: session.id,
         SESSION_AUTH_DIR: authDir,
         PORT: String(port),
-        PHONE_NUMBER: session.number,
-        BOT_NAME: `${process.env.BOT_NAME || 'ILOM'}-${session.number.slice(-4)}`
+        PHONE_NUMBER: session.number
     };
 
     const child = spawn(process.execPath, ['index.js'], {

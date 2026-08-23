@@ -1,28 +1,40 @@
+import fs from 'fs';
+import path from 'path';
 import config from '../config.js';
-import { normalizePhone } from './sessionControl.js';
-import { getOwners as getPersistentOwners } from './owner.js';
 
-function normalizeJid(value = '') {
-    const s = String(value || '').trim();
-    const userPart = s.split('@')[0].split(':')[0];
-    const fromPhone = normalizePhone(userPart);
-    if (fromPhone) return fromPhone;
-    const digitsOnly = userPart.replace(/[^0-9]/g, '');
-    if (digitsOnly.length >= 7) return digitsOnly.slice(-15);
-    return userPart.length >= 4 ? userPart : '';
+const OWNERS_FILE = path.join(process.cwd(), 'owners.json');
+
+function strip(v) {
+    const s = String(v || '').replace(/[^0-9]/g, '');
+    return s.length >= 7 ? s : '';
 }
 
-function parseJidList(envValue = '') {
-    return String(envValue || '').split(',').map(normalizeJid).filter(Boolean);
+function stripJid(jid) {
+    return strip(String(jid || '').split('@')[0].split(':')[0]);
+}
+
+function envOwners() {
+    return [...config.ownerNumbersRaw];
+}
+
+function envSudoers() {
+    return [
+        ...envOwners(),
+        ...config.sudoNumbersRaw
+    ];
+}
+
+function fileOwners() {
+    try {
+        const data = JSON.parse(fs.readFileSync(OWNERS_FILE, 'utf8'));
+        return Array.isArray(data) ? data.map(stripJid).filter(Boolean) : [];
+    } catch {
+        return [];
+    }
 }
 
 export function getTopOwnerNumbers() {
-    const top = normalizeJid(process.env.TOP_OWNER_NUMBER || process.env.TOP_OWNER || '');
-    const topList = parseJidList(process.env.TOP_OWNER_NUMBERS || process.env.TOP_OWNERS || '');
-    const ownerJids = (config.ownerNumbers || []).map(normalizeJid).filter(Boolean);
-    const persistentOwners = getPersistentOwners().map(normalizeJid).filter(Boolean);
-    const base = top ? [top, ...ownerJids.filter(n => n !== top)] : ownerJids;
-    return [...new Set([...base, ...topList, ...persistentOwners])];
+    return [...new Set([...envOwners(), ...fileOwners()])];
 }
 
 export function getPrimaryTopOwner() {
@@ -30,19 +42,17 @@ export function getPrimaryTopOwner() {
 }
 
 export function getSudoNumbers() {
-    const sudoers = (config.sudoers || []).map(normalizeJid).filter(Boolean);
-    const devJids = parseJidList(process.env.DEVELOPER_NUMBERS || process.env.DEV_NUMBERS || '');
-    return [...new Set([...getTopOwnerNumbers(), ...sudoers, ...devJids])];
+    return [...new Set([...getTopOwnerNumbers(), ...envSudoers()])];
 }
 
 export function isTopOwner(sender = '') {
-    const jid = normalizeJid(sender);
-    return !!jid && getTopOwnerNumbers().includes(jid);
+    const num = strip(sender);
+    return !!num && getTopOwnerNumbers().includes(num);
 }
 
 export function isDeveloper(sender = '') {
-    const jid = normalizeJid(sender);
-    return !!jid && getSudoNumbers().includes(jid);
+    const num = strip(sender);
+    return !!num && getSudoNumbers().includes(num);
 }
 
 export function getDeveloperNumbers() {

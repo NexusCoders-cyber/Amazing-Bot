@@ -4,9 +4,48 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import logger from './logger.js';
 import AXIS_ALIAS_MAP from './axisAliasMap.js';
+import { registerEventCommand } from './amazingbot.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+const SRC_COMMANDS = path.join(__dirname, '..', 'commands');
+const SCRIPTS_CMDS = path.join(process.cwd(), 'scripts', 'cmds');
+const SCRIPTS_EVENTS = path.join(process.cwd(), 'scripts', 'events');
+
+function normalizeFromConfig(raw, category, filename, filepath) {
+    const cfg = raw.config || {};
+    const role = cfg.role ?? raw.role ?? 0;
+    return {
+        name: cfg.name || raw.name,
+        aliases: cfg.aliases || raw.aliases || [],
+        category: cfg.category || raw.category || category || 'general',
+        description: cfg.shortDescription || cfg.longDescription || raw.description || '',
+        longDescription: cfg.longDescription || raw.longDescription || '',
+        usage: cfg.guide?.en || raw.usage || cfg.name || raw.name || '',
+        example: raw.example || '',
+        cooldown: cfg.coolDown ?? raw.cooldown ?? 0,
+        role,
+        ownerOnly: raw.ownerOnly ?? (role >= 2),
+        sudoOnly: raw.sudoOnly ?? false,
+        adminOnly: raw.adminOnly ?? (role >= 1),
+        groupOnly: raw.groupOnly ?? false,
+        privateOnly: raw.privateOnly ?? false,
+        botAdminRequired: raw.botAdminRequired ?? false,
+        noPrefix: cfg.noPrefix ?? raw.noPrefix ?? false,
+        args: raw.args ?? false,
+        minArgs: raw.minArgs ?? 0,
+        execute: raw.execute || raw.onStart || null,
+        onStart: raw.onStart || raw.execute || null,
+        onChat: raw.onChat || null,
+        onReply: raw.onReply || null,
+        onReaction: raw.onReaction || null,
+        category,
+        filename,
+        filepath,
+        source: filepath.includes('scripts') ? 'scripts' : 'src',
+    };
+}
 
 class CommandManager {
     constructor() {
@@ -21,117 +60,119 @@ class CommandManager {
 
     async initializeCommands() {
         if (this.isInitialized) return;
-        try {
-            await this.loadAllCommands();
-            this.isInitialized = true;
-            logger.info(`Command manager initialized with ${this.loadedCommands.size} commands`);
-        } catch (error) {
-            logger.error('Command manager initialization failed:', error);
-            throw error;
+        await this.loadFromSrcCommands();
+        await this.loadFromScriptsCmds();
+        await this.loadEventScripts();
+        this.isInitialized = true;
+        logger.info(`CommandManager: ${this.loadedCommands.size} commands loaded`);
+    }
+
+    async loadFromSrcCommands() {
+        if (!await fs.pathExists(SRC_COMMANDS)) return;
+        const entries = await fs.readdir(SRC_COMMANDS, { withFileTypes: true });
+        for (const entry of entries.filter(e => e.isDirectory())) {
+            const catPath = path.join(SRC_COMMANDS, entry.name);
+            const files = (await fs.readdir(catPath)).filter(f => f.endsWith('.js'));
+            for (const file of files) {
+                await this.loadCommandFile(path.join(catPath, file), entry.name);
+            }
         }
     }
 
-    async loadAllCommands() {
-        const commandsPath = path.join(__dirname, '..', 'commands');
-        let entries;
-        try {
-            entries = await fs.readdir(commandsPath, { withFileTypes: true });
-        } catch {
-            logger.warn('Commands directory not found, skipping command load');
-            return;
-        }
-        const categories = entries.filter(e => e.isDirectory()).map(e => e.name);
-        for (const category of categories) {
-            await this.loadCommandCategory(category);
+    async loadFromScriptsCmds() {
+        await fs.ensureDir(SCRIPTS_CMDS);
+        const files = (await fs.readdir(SCRIPTS_CMDS)).filter(f => f.endsWith('.js') && !f.endsWith('.eg.js'));
+        for (const file of files) {
+            await this.loadCommandFile(path.join(SCRIPTS_CMDS, file), null);
         }
     }
 
-    async loadCommandCategory(category) {
-        const categoryPath = path.join(__dirname, '..', 'commands', category);
-        if (!await fs.pathExists(categoryPath)) return;
-
-        let commandFiles;
-        try {
-            commandFiles = (await fs.readdir(categoryPath)).filter(f => f.endsWith('.js'));
-        } catch {
-            return;
-        }
-
-        if (!this.commandCategories.has(category)) {
-            this.commandCategories.set(category, []);
-        }
-
-        for (const file of commandFiles) {
-            await this.loadCommand(category, file);
+    async loadEventScripts() {
+        await fs.ensureDir(SCRIPTS_EVENTS);
+        const files = (await fs.readdir(SCRIPTS_EVENTS)).filter(f => f.endsWith('.js') && !f.endsWith('.eg.js'));
+        for (const file of files) {
+            try {
+                const url = `file://${path.join(SCRIPTS_EVENTS, file)}?t=${Date.now()}`;
+                const mod = await import(url);
+                const raw = mod.default || mod;
+                if (!raw?.config?.name) continue;
+                const eventCmd = normalizeFromConfig(raw, 'events', file, path.join(SCRIPTS_EVENTS, file));
+                registerEventCommand(eventCmd.name, eventCmd);
+                logger.debug(`Event script loaded: ${eventCmd.name}`);
+            } catch (err) {
+                logger.error(`Failed to load event script ${file}: ${err.message}`);
+            }
         }
     }
 
-    async loadCommand(category, filename) {
+    async loadCommandFile(filepath, fallbackCategory, strict = false) {
         try {
-            const commandPath = path.join(__dirname, '..', 'commands', category, filename);
-            const commandUrl = `file://${commandPath}?t=${Date.now()}`;
-            const commandModule = await import(commandUrl);
-            const command = commandModule.default;
+            const url = `file://${filepath}?t=${Date.now()}`;
+            const mod = await import(url);
+            const raw = mod.default || mod;
 
-            if (!command?.name || typeof command?.execute !== 'function') {
-                const hasNamedExports = Object.keys(commandModule || {}).some(k => k !== 'default');
-                if (!hasNamedExports) {
-                    logger.warn(`Invalid command structure: ${filename}`);
+            const name = raw?.config?.name || raw?.name;
+            const hasEntry = typeof raw?.onStart === 'function' || typeof raw?.execute === 'function';
+
+            if (!name || !hasEntry) {
+                const hasNamed = Object.keys(mod || {}).some(k => k !== 'default');
+                if (!hasNamed) {
+                    logger.warn(`Skipped (invalid structure): ${filepath}`);
+                    if (strict) throw new Error('Command must export a default object with a config.name and an onStart function.');
                 }
                 return false;
             }
 
-            const commandData = { ...command, category, filename, filepath: commandPath };
-            this.loadedCommands.set(command.name, commandData);
+            const category = raw?.config?.category || raw?.category || fallbackCategory || 'general';
+            const cmd = normalizeFromConfig(raw, category, path.basename(filepath), filepath);
+            this.loadedCommands.set(cmd.name, cmd);
 
-            if (!this.commandCategories.has(category)) {
-                this.commandCategories.set(category, []);
-            }
-            const catCmds = this.commandCategories.get(category);
-            if (!catCmds.includes(command.name)) {
-                catCmds.push(command.name);
-            }
+            if (!this.commandCategories.has(category)) this.commandCategories.set(category, []);
+            const cat = this.commandCategories.get(category);
+            if (!cat.includes(cmd.name)) cat.push(cmd.name);
 
-            if (command.aliases) {
-                for (const alias of command.aliases) {
-                    this.aliases.set(alias, command.name);
-                }
+            for (const alias of cmd.aliases) {
+                this.aliases.set(alias, cmd.name);
             }
 
-            if (!this.commandUsage.has(command.name)) {
-                this.commandUsage.set(command.name, { used: 0, lastUsed: null, errors: 0, avgExecutionTime: 0 });
+            if (!this.commandUsage.has(cmd.name)) {
+                this.commandUsage.set(cmd.name, { used: 0, lastUsed: null, errors: 0, avgExecutionTime: 0 });
             }
 
             return true;
-        } catch (error) {
-            logger.error(`Failed to load command ${filename}: ${error.message}`);
+        } catch (err) {
+            logger.error(`Failed to load ${filepath}: ${err.message}`);
+            if (strict) throw err;
             return false;
         }
     }
 
     async reloadCommand(commandName) {
-        const command = this.getCommand(commandName, true);
-        if (!command) return false;
-        const catCmds = this.commandCategories.get(command.category) || [];
-        const idx = catCmds.indexOf(command.name);
-        if (idx > -1) catCmds.splice(idx, 1);
-        this.loadedCommands.delete(command.name);
-        if (command.aliases) {
-            for (const alias of command.aliases) this.aliases.delete(alias);
-        }
-        return await this.loadCommand(command.category, command.filename);
+        const cmd = this.getCommand(commandName, true);
+        if (!cmd) return false;
+        const cat = this.commandCategories.get(cmd.category) || [];
+        const idx = cat.indexOf(cmd.name);
+        if (idx > -1) cat.splice(idx, 1);
+        this.loadedCommands.delete(cmd.name);
+        for (const alias of cmd.aliases || []) this.aliases.delete(alias);
+        return await this.loadCommandFile(cmd.filepath, cmd.category, true);
+    }
+
+    async loadNewCommandFile(filepath, fallbackCategory) {
+        return await this.loadCommandFile(filepath, fallbackCategory, true);
     }
 
     async reloadCategory(category) {
-        const commands = this.getCommandsByCategory(category, true);
-        for (const cmd of commands) {
+        for (const cmd of this.getCommandsByCategory(category, true)) {
             this.loadedCommands.delete(cmd.name);
-            if (cmd.aliases) {
-                for (const alias of cmd.aliases) this.aliases.delete(alias);
-            }
+            for (const alias of cmd.aliases || []) this.aliases.delete(alias);
         }
         this.commandCategories.set(category, []);
-        await this.loadCommandCategory(category);
+        const catPath = path.join(SRC_COMMANDS, category);
+        if (await fs.pathExists(catPath)) {
+            const files = (await fs.readdir(catPath)).filter(f => f.endsWith('.js'));
+            for (const f of files) await this.loadCommandFile(path.join(catPath, f), category);
+        }
         return this.commandCategories.get(category)?.length || 0;
     }
 
@@ -157,39 +198,25 @@ class CommandManager {
     }
 
     getCommandsByCategory(category, includeDisabled = false) {
-        const names = this.commandCategories.get(category) || [];
-        return names
+        return (this.commandCategories.get(category) || [])
             .map(n => this.loadedCommands.get(n))
             .filter(Boolean)
-            .filter(cmd => includeDisabled || !this.disabledCommands.has(cmd.name));
+            .filter(c => includeDisabled || !this.disabledCommands.has(c.name));
     }
 
     getAllCommands(includeDisabled = false) {
         return Array.from(this.loadedCommands.values())
-            .filter(cmd => includeDisabled || !this.disabledCommands.has(cmd.name));
+            .filter(c => includeDisabled || !this.disabledCommands.has(c.name));
     }
 
     getAllCategories() {
         return Array.from(this.commandCategories.keys());
     }
 
-    enableCommand(name) {
-        this.disabledCommands.delete(name);
-        return true;
-    }
-
-    disableCommand(name) {
-        this.disabledCommands.add(name);
-        return true;
-    }
-
-    isCommandEnabled(name) {
-        return !this.disabledCommands.has(name);
-    }
-
-    getDisabledCommands() {
-        return Array.from(this.disabledCommands);
-    }
+    enableCommand(name) { this.disabledCommands.delete(name); return true; }
+    disableCommand(name) { this.disabledCommands.add(name); return true; }
+    isCommandEnabled(name) { return !this.disabledCommands.has(name); }
+    getDisabledCommands() { return Array.from(this.disabledCommands); }
 
     recordCommandUsage(commandName, executionTime, success = true) {
         const usage = this.commandUsage.get(commandName);
@@ -206,35 +233,23 @@ class CommandManager {
     }
 
     searchCommands(query) {
-        const lowerQuery = query.toLowerCase();
-        const results = [];
-        for (const command of this.loadedCommands.values()) {
-            if (this.disabledCommands.has(command.name)) continue;
-            const nameMatch = command.name.includes(lowerQuery);
-            const aliasMatch = command.aliases?.some(a => a.includes(lowerQuery));
-            const descMatch = command.description?.toLowerCase().includes(lowerQuery);
-            if (nameMatch || aliasMatch || descMatch) {
-                results.push(command);
-            }
-        }
-        return results.sort((a, b) => {
-            const aExact = a.name === lowerQuery ? 0 : 1;
-            const bExact = b.name === lowerQuery ? 0 : 1;
-            return aExact - bExact;
-        });
+        const q = query.toLowerCase();
+        return Array.from(this.loadedCommands.values())
+            .filter(c => !this.disabledCommands.has(c.name) && (
+                c.name.includes(q) ||
+                c.aliases?.some(a => a.includes(q)) ||
+                c.description?.toLowerCase().includes(q)
+            ))
+            .sort((a, b) => (a.name === q ? -1 : b.name === q ? 1 : 0));
     }
 
     getSystemStats() {
-        const totalCommands = this.loadedCommands.size;
-        const usageStats = Array.from(this.commandUsage.values());
         return {
-            totalCommands,
-            enabledCommands: totalCommands - this.disabledCommands.size,
+            totalCommands: this.loadedCommands.size,
+            enabledCommands: this.loadedCommands.size - this.disabledCommands.size,
             disabledCommands: this.disabledCommands.size,
             categories: this.commandCategories.size,
             totalAliases: this.aliases.size,
-            totalUsage: usageStats.reduce((s, u) => s + u.used, 0),
-            totalErrors: usageStats.reduce((s, u) => s + u.errors, 0)
         };
     }
 
@@ -254,6 +269,7 @@ export const getAllCommands = () => commandManager.getAllCommands();
 export const getCommandsByCategory = (cat) => commandManager.getCommandsByCategory(cat);
 export const getAllCategories = () => commandManager.getAllCategories();
 export const reloadCommand = (name) => commandManager.reloadCommand(name);
+export const loadNewCommandFile = (filepath, category) => commandManager.loadNewCommandFile(filepath, category);
 export const reloadCategory = (cat) => commandManager.reloadCategory(cat);
 export const reloadAllCommands = () => commandManager.reloadAllCommands();
 export const enableCommand = (name) => commandManager.enableCommand(name);
@@ -261,7 +277,7 @@ export const disableCommand = (name) => commandManager.disableCommand(name);
 export const isCommandEnabled = (name) => commandManager.isCommandEnabled(name);
 export const searchCommands = (query) => commandManager.searchCommands(query);
 export const getSystemStats = () => commandManager.getSystemStats();
-export const recordCommandUsage = (name, time, success) => commandManager.recordCommandUsage(name, time, success);
+export const recordCommandUsage = (n, t, s) => commandManager.recordCommandUsage(n, t, s);
 export const getTopCommands = (limit) => commandManager.getTopCommands(limit);
 
 export default commandManager;

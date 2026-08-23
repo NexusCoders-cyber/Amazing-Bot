@@ -8,6 +8,7 @@ import { dirname } from 'path';
 import readline from 'readline/promises';
 import NodeCache from 'node-cache';
 import chalk from 'chalk';
+import { initAmazingBot } from './src/utils/amazingbot.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -32,8 +33,11 @@ import Settings from './src/models/Settings.js';
 import { startTelegramPairBot } from './src/services/telegramPairBot.js';
 import { setPairingSessionSocketHandler, startSavedPairedSessions } from './src/services/pairingService.js';
 import { BOT_CHANNEL_JID } from './src/utils/botChannel.js';
+import { backfillGroups, captureMessageSender, captureGroupInfo } from './src/utils/dataSync.js';
 
 global._config = config;
+initAmazingBot();
+global._botGroupCache = new Map();
 
 const msgRetryCounterCache = new NodeCache({ stdTTL: 600, checkperiod: 60 });
 const app = express();
@@ -286,10 +290,13 @@ async function processSessionCredentials() {
         if (
             lowerSessionId.startsWith('ilombot--') ||
             lowerSessionId.startsWith('ilombot ilombot--') ||
+            lowerSessionId.startsWith('amazingbot--') ||
+            lowerSessionId.startsWith('amazingbot amazingbot--') ||
             /^https:\/\/mega\.nz\/(file|folder)\//i.test(normalizedSessionId)
         ) {
             const encoded = normalizedSessionId
                 .replace(/^(?:ilombot\s+)?ilombot--/i, '')
+                .replace(/^(?:amazingbot\s+)?amazingbot--/i, '')
                 .trim()
                 .replace(/\s+/g, '');
 
@@ -337,7 +344,7 @@ async function processSessionCredentials() {
                 await fs.remove(path.join(SESSION_PATH, 'creds.json')).catch(() => {});
                 throw new Error('Downloaded session file is invalid');
             }
-            logger.info('Session loaded from ilombot-- format');
+            logger.info('Session loaded from mega-hosted format');
             return true;
         }
 
@@ -403,6 +410,11 @@ async function setupEventHandlers(sock, saveCreds) {
                 if (!message?.key) continue;
                 const from = message.key.remoteJid;
                 if (!from || from === 'status@broadcast') continue;
+                if (from.endsWith('@g.us')) {
+                    global._botGroupCache.set(from, Date.now());
+                    captureGroupInfo(sock, from).catch(() => {});
+                }
+                captureMessageSender(sock, message).catch(() => {});
                 const ownJid = sock?.user?.id ? sock.user.id.split(':')[0] : '';
                 const isOwnChat = ownJid && from === ownJid;
                 if (message.key.fromMe && !config.selfMode && !isOwnChat) continue;
@@ -429,11 +441,13 @@ async function setupEventHandlers(sock, saveCreds) {
     });
 
     sock.ev.on('group-participants.update', async (update) => {
+        if (update?.id) global._botGroupCache.set(update.id, Date.now());
         try { await groupHandler.handleParticipantsUpdate(sock, update); }
         catch (error) { logger.error('Group participants update error:', error); }
     });
 
     sock.ev.on('groups.update', async (updates) => {
+        if (Array.isArray(updates)) updates.forEach(u => { if (u?.id) global._botGroupCache.set(u.id, Date.now()); });
         try { await groupHandler.handleGroupUpdate(sock, updates); }
         catch (error) { logger.error('Groups update error:', error); }
     });
@@ -561,6 +575,9 @@ async function establishWhatsAppConnection() {
                     try { enableAutoTranslate(sock); } catch {}
                     await sendBotStatusUpdate(sock).catch(() => {});
                     await autoFollowNewsletters(sock).catch(() => {});
+                    backfillGroups(sock).then(count => {
+                        if (count) logger.info(`Backfilled ${count} group(s) into threadsData`);
+                    }).catch(() => {});
 
                     if (!getSessionIdentifier() && !generatedSessionSaved) {
                         try {
@@ -704,7 +721,7 @@ setInterval(() => {
 async function displayBanner() {
     console.clear();
     const version = constants.BOT_VERSION;
-    const botName = config.botName || 'ILOM Bot';
+    const botName = config.botName || 'AmazingBot';
     const prefix = config.prefix || '.';
     const mode = config.publicMode ? 'Public' : 'Private';
     const session = getSessionIdentifier() ? 'Present' : 'QR Required';
@@ -714,9 +731,9 @@ async function displayBanner() {
         const { default: gradient } = await import('gradient-string');
         const art = figlet.textSync('ILOM  BOT', { font: 'ANSI Shadow', horizontalLayout: 'fitted' });
         console.log(gradient.rainbow(art));
-        console.log(gradient.pastel(`  v${version}  ·  Multi-Device WhatsApp Bot  ·  by Ilom\n`));
+        console.log(gradient.pastel(`  🧠 v${version}  ·  Multi-Device WhatsApp Bot  ·  by Ilom  🧠\n`));
     } catch {
-        console.log(chalk.bold.cyan(`\n  ${botName} v${version}\n`));
+        console.log(chalk.bold.cyan(`\n  🧠 ILOM BOT 🧠  v${version}\n`));
     }
 
     console.log(chalk.gray('  ┌───────────────────────────────────┐'));
@@ -740,6 +757,7 @@ async function initializeBot() {
         await initializeCache();
         await commandHandler.initialize();
         await commandHandler.loadCommands();
+        commandHandler.registerOnChatCommands();
         await loadPlugins();
         await startScheduler();
         await startWebServer(app);

@@ -1,32 +1,36 @@
-const cfg = global.autoStatusCfg || (global.autoStatusCfg = { view: false, like: false, emoji: '❤️' });
+import fs from 'fs-extra';
+import path from 'path';
 
-export function getAutoStatusConfig() { return cfg; }
+const FILE = path.join(process.cwd(), 'data', 'autostatus.json');
+let _cfg = null;
+function load() { if (_cfg) return _cfg; try { _cfg = fs.readJsonSync(FILE); } catch { _cfg = { enabled: false, react: true, emoji: 'heart' }; } return _cfg; }
+function save() { fs.ensureDirSync(path.dirname(FILE)); fs.writeJsonSync(FILE, _cfg, { spaces: 2 }); }
+
+export function getAutoStatusConfig() { return load(); }
 
 export default {
-  name: 'autostatus',
-  aliases: ['autoviewstatus', 'autolikestatus'],
-  category: 'admin',
-  description: 'Auto view/like WhatsApp statuses',
-  usage: 'autostatus view on|off | autostatus like on|off [emoji] | autostatus status',
-  ownerOnly: true,
-  async execute({ sock, message, from, args, command }) {
-    const cmd = String(command || '').toLowerCase();
-    if (cmd === 'autoviewstatus') {
-      cfg.view = /on|1|true/i.test(args[0] || '');
-      return sock.sendMessage(from, { text: `✅ Auto status view: ${cfg.view ? 'ON' : 'OFF'}` }, { quoted: message });
-    }
-    if (cmd === 'autolikestatus') {
-      cfg.like = /on|1|true/i.test(args[0] || '');
-      if (args[1]) cfg.emoji = args[1];
-      return sock.sendMessage(from, { text: `✅ Auto status like: ${cfg.like ? 'ON' : 'OFF'}\nEmoji: ${cfg.emoji}` }, { quoted: message });
-    }
-
-    const sub = String(args[0] || 'status').toLowerCase();
-    if (sub === 'status') return sock.sendMessage(from, { text: `👁️ AutoView: ${cfg.view ? 'ON' : 'OFF'}\n❤️ AutoLike: ${cfg.like ? 'ON' : 'OFF'} (${cfg.emoji})` }, { quoted: message });
-    if (sub === 'view') cfg.view = /on|1|true/i.test(args[1] || '');
-    else if (sub === 'like') { cfg.like = /on|1|true/i.test(args[1] || ''); if (args[2]) cfg.emoji = args[2]; }
-    else return sock.sendMessage(from, { text: 'Usage: autostatus view on|off | autostatus like on|off [emoji] | autostatus status' }, { quoted: message });
-
-    return sock.sendMessage(from, { text: `✅ Updated\n👁️ AutoView: ${cfg.view ? 'ON' : 'OFF'}\n❤️ AutoLike: ${cfg.like ? 'ON' : 'OFF'} (${cfg.emoji})` }, { quoted: message });
-  }
+    config: {
+        name: 'autostatus',
+        aliases: ['statusview'],
+        author: 'Raphael Ilom',
+        version: '1.0',
+        shortDescription: 'Auto view and react to status updates',
+        category: 'owner',
+        coolDown: 3,
+        role: 2,
+        guide: { en: '{prefix}autostatus on|off|react on|off|emoji <emoji>' },
+    },
+    async onStart({ args, reply }) {
+        const cfg = load();
+        const sub = (args[0] || '').toLowerCase();
+        if (sub === 'on') { cfg.enabled = true; save(); return reply('Auto status view enabled.'); }
+        if (sub === 'off') { cfg.enabled = false; save(); return reply('Auto status view disabled.'); }
+        if (sub === 'react') {
+            cfg.react = (args[1] || '').toLowerCase() !== 'off';
+            save();
+            return reply(`Status react: ${cfg.react ? 'ON' : 'OFF'}`);
+        }
+        if (sub === 'emoji' && args[1]) { cfg.emoji = args[1]; save(); return reply(`React emoji set to: ${cfg.emoji}`); }
+        reply(`View: ${cfg.enabled ? 'ON' : 'OFF'}\nReact: ${cfg.react ? 'ON' : 'OFF'}\nEmoji: ${cfg.emoji}`);
+    },
 };

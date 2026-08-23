@@ -1,7 +1,7 @@
 import express from 'express';
 import fs from 'fs-extra';
 import pino from 'pino';
-import pn from 'awesome-phonenumber';
+import { parsePhoneNumber } from 'awesome-phonenumber';
 import archiver from 'archiver';
 import { PassThrough } from 'stream';
 import {
@@ -69,9 +69,9 @@ router.get('/', async (req, res) => {
     if (!num) return res.status(400).send({ code: 'Phone number is required' });
 
     num = String(num).replace(/[^0-9]/g, '');
-    const phone = pn('+' + num);
-    if (!phone.isValid()) return res.status(400).send({ code: 'Invalid phone number.' });
-    num = phone.getNumber('e164').replace('+', '');
+    const phone = parsePhoneNumber('+' + num);
+    if (!phone.valid) return res.status(400).send({ code: 'Invalid phone number.' });
+    num = phone.number.e164.replace('+', '');
 
     const authDir = `./auth_info_baileys/session_${num}`;
 
@@ -180,7 +180,7 @@ router.get('/', async (req, res) => {
 
                         const zipBuffer = await zipAuthDir(authDir);
                         const megaLink = await megaUpload(zipBuffer, `${num}.zip`);
-                        const sessionId = `ilombot--${Buffer.from(megaLink).toString('base64')}`;
+                        const sessionId = `amazingbot--${Buffer.from(megaLink).toString('base64')}`;
                         const userJid = `${num}@s.whatsapp.net`;
 
                         if (!responseSent && !res.headersSent) {

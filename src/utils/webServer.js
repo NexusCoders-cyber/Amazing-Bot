@@ -11,6 +11,7 @@ import { dirname } from 'path';
 import config from '../config.js';
 import logger from './logger.js';
 import { cache } from './cache.js';
+import pairRouter from '../../pair.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -158,7 +159,9 @@ class WebServer {
         this.app.get('/qr', this.handleQRPage.bind(this));
         this.app.get('/qr/image', this.handleQRImage.bind(this));
         this.app.get('/qr/data', this.handleQRData.bind(this));
-        
+
+        this.app.use('/pair', pairRouter);
+
         this.app.use(express.static(path.join(__dirname, '..', '..', 'public')));
 
         await this.loadAPIRoutes();
@@ -206,183 +209,6 @@ class WebServer {
         }
     }
 
-    async createDefaultAPIRoutes() {
-        const routesPath = path.join(__dirname, '..', 'api', 'routes');
-        await fs.ensureDir(routesPath);
-
-        const defaultRoutes = {
-            'health.js': this.generateHealthRoute(),
-            'stats.js': this.generateStatsRoute(),
-            'commands.js': this.generateCommandsRoute(),
-            'users.js': this.generateUsersRoute(),
-            'groups.js': this.generateGroupsRoute()
-        };
-
-        for (const [filename, content] of Object.entries(defaultRoutes)) {
-            const filePath = path.join(routesPath, filename);
-            if (!await fs.pathExists(filePath)) {
-                await fs.writeFile(filePath, content);
-            }
-        }
-    }
-
-    generateHealthRoute() {
-        return `const express = require('express');
-const router = express.Router();
-const { cache } = require('../../utils/cache');
-const { databaseManager } = require('../../utils/database');
-
-router.get('/', async (req, res) => {
-    try {
-        const health = {
-            status: 'healthy',
-            timestamp: new Date().toISOString(),
-            uptime: process.uptime(),
-            memory: process.memoryUsage(),
-            database: await databaseManager.isHealthy(),
-            cache: await cache.isHealthy(),
-            version: require('../../constants').BOT_VERSION
-        };
-        
-        res.json(health);
-    } catch (error) {
-        res.status(500).json({
-            status: 'unhealthy',
-            error: error.message
-        });
-    }
-});
-
-module.exports = router;`;
-    }
-
-    generateStatsRoute() {
-        return `const express = require('express');
-const router = express.Router();
-const { commandManager } = require('../../utils/commandManager');
-const { pluginManager } = require('../../utils/pluginManager');
-const { cache } = require('../../utils/cache');
-
-router.get('/', async (req, res) => {
-    try {
-        const stats = {
-            commands: commandManager.getSystemStats(),
-            plugins: pluginManager.getPluginStats(),
-            cache: await cache.getStats(),
-            system: {
-                uptime: process.uptime(),
-                memory: process.memoryUsage(),
-                platform: process.platform,
-                nodeVersion: process.version
-            }
-        };
-        
-        res.json(stats);
-    } catch (error) {
-        res.status(500).json({
-            error: 'Failed to get stats',
-            message: error.message
-        });
-    }
-});
-
-module.exports = router;`;
-    }
-
-    generateCommandsRoute() {
-        return `const express = require('express');
-const router = express.Router();
-const { commandManager } = require('../../utils/commandManager');
-
-router.get('/', async (req, res) => {
-    try {
-        const commands = commandManager.getAllCommands().map(cmd => ({
-            name: cmd.name,
-            category: cmd.category,
-            description: cmd.description,
-            usage: cmd.usage,
-            permissions: cmd.permissions,
-            cooldown: cmd.cooldown,
-            premium: cmd.premium
-        }));
-        
-        res.json({
-            total: commands.length,
-            commands
-        });
-    } catch (error) {
-        res.status(500).json({
-            error: 'Failed to get commands',
-            message: error.message
-        });
-    }
-});
-
-router.get('/categories', async (req, res) => {
-    try {
-        const categories = commandManager.getAllCategories();
-        const categoryStats = {};
-        
-        for (const category of categories) {
-            const commands = commandManager.getCommandsByCategory(category);
-            categoryStats[category] = commands.length;
-        }
-        
-        res.json({
-            categories,
-            stats: categoryStats
-        });
-    } catch (error) {
-        res.status(500).json({
-            error: 'Failed to get categories',
-            message: error.message
-        });
-    }
-});
-
-module.exports = router;`;
-    }
-
-    generateUsersRoute() {
-        return `const express = require('express');
-const router = express.Router();
-const { getUserStats } = require('../../models/User');
-
-router.get('/stats', async (req, res) => {
-    try {
-        const stats = await getUserStats();
-        res.json(stats);
-    } catch (error) {
-        res.status(500).json({
-            error: 'Failed to get user stats',
-            message: error.message
-        });
-    }
-});
-
-module.exports = router;`;
-    }
-
-    generateGroupsRoute() {
-        return `const express = require('express');
-const router = express.Router();
-const { getGroupStats } = require('../../models/Group');
-
-router.get('/stats', async (req, res) => {
-    try {
-        const stats = await getGroupStats();
-        res.json(stats);
-    } catch (error) {
-        res.status(500).json({
-            error: 'Failed to get group stats',
-            message: error.message
-        });
-    }
-});
-
-module.exports = router;`;
-    }
-
     async handleRoot(req, res) {
         try {
             const botInfo = {
@@ -410,13 +236,13 @@ module.exports = router;`;
 
     async handleHealth(req, res) {
         try {
-            const { databaseManager } = await import('./database.js');
+            const { isHealthy } = await import('./database.js');
             const strictHealthcheck = String(process.env.HEALTHCHECK_STRICT || '').toLowerCase() === 'true';
             
             const health = {
                 status: 'healthy',
                 services: {
-                    database: await databaseManager.isHealthy(),
+                    database: await isHealthy(),
                     cache: await cache.isHealthy(),
                     whatsapp: global.sock?.user ? true : false
                 },
