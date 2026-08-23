@@ -17,11 +17,33 @@ function shouldThrottleReadd(groupId, participant) {
     return false;
 }
 
+function getBotJid(sock) {
+    return sock?.user?.id?.split(':')[0] || '';
+}
+
+function splitBotParticipant(sock, participants) {
+    const botJid = getBotJid(sock);
+    if (!botJid) return { botIncluded: false, others: participants };
+    const botIncluded = participants.some(p => String(p).split(':')[0] === botJid);
+    const others = participants.filter(p => String(p).split(':')[0] !== botJid);
+    return { botIncluded, others };
+}
+
 class GroupHandler {
     async handleParticipantsUpdate(sock, groupUpdate) {
         try {
             const { id, action } = groupUpdate;
             logger.info(`Group participants update: ${id} — Action: ${action}`);
+
+            const botActionMap = { add: 'botJoined', remove: 'botRemoved', leave: 'botRemoved', promote: 'botPromote', demote: 'botDemote' };
+            if (botActionMap[action]) {
+                const { botIncluded, others } = splitBotParticipant(sock, groupUpdate.participants || []);
+                if (botIncluded && config.events?.botStatusAlerts) {
+                    await this.dispatchBotStatusEvent(sock, { ...groupUpdate, action: botActionMap[action] });
+                }
+                groupUpdate = { ...groupUpdate, participants: others };
+                if (!others.length) return;
+            }
 
             if (action === 'add') {
                 await this.processJoin(sock, groupUpdate);
@@ -36,6 +58,12 @@ class GroupHandler {
         } catch (error) {
             logger.error('Error handling participants update:', error);
         }
+    }
+
+    async dispatchBotStatusEvent(sock, groupUpdate) {
+        const { id: groupId, action, author } = groupUpdate;
+        const metadata = await sock.groupMetadata(groupId).catch(() => null);
+        await commandHandler.handleEvent(sock, { from: groupId, participants: [], action, author, metadata });
     }
 
     async processJoin(sock, groupUpdate) {
