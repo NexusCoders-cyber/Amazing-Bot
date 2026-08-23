@@ -1,10 +1,12 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { loadBlob, saveBlob, isDatabaseConnected } from './persistentStore.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_PATH = join(__dirname, '../../data/economy_v2.json');
 const LEGACY_PATH = join(__dirname, '../../data/economy.json');
+const STORE_KEY = 'store:economy';
 
 export const DEFAULTS = {
     wallet: 1000,
@@ -63,6 +65,27 @@ function ensureDir() {
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 }
 
+let hydrationPromise = null;
+
+function ensureHydrated() {
+    if (!hydrationPromise) hydrationPromise = hydrateFromMongo();
+    return hydrationPromise;
+}
+
+async function hydrateFromMongo() {
+    if (!isDatabaseConnected()) return;
+    try {
+        const remote = await loadBlob(STORE_KEY);
+        if (remote && typeof remote === 'object') {
+            store = { ...store, ...remote };
+            dirty = true;
+            console.log(`[economyDB] Hydrated ${Object.keys(remote).length} record(s) from MongoDB`);
+        }
+    } catch (err) {
+        console.error('[economyDB] MongoDB hydration failed:', err.message);
+    }
+}
+
 function loadStore() {
     if (store) return store;
     ensureDir();
@@ -85,6 +108,7 @@ function flush() {
     } catch (err) {
         console.error('[economyDB] Failed to write data file:', err.message);
     }
+    saveBlob(STORE_KEY, store).catch(() => {});
 }
 
 setInterval(flush, 3000);
@@ -161,6 +185,10 @@ export function saveEco(userId, data) {
 
 export function getAllEco() {
     return { ...loadStore() };
+}
+
+export function flushEco() {
+    flush();
 }
 
 export function saveEcoName(userId, name) {
@@ -247,3 +275,6 @@ async function syncToUserModel(userId, data) {
         });
     } catch {}
 }
+
+loadStore();
+await ensureHydrated();
