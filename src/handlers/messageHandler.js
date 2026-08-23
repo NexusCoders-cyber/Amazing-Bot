@@ -61,7 +61,7 @@ function getDestinationChatId(configObj, originChatId, appConfig) {
 async function getAutoDownload() {
     if (!autoDownloadHandler) {
         try {
-            const mod = await import('../commands/media/autolink.js');
+            const mod = await import('../../scripts/cmds/autolink.js');
             autoDownloadHandler = mod.handleAutoDownload;
         } catch {
             autoDownloadHandler = async () => false;
