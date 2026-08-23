@@ -148,6 +148,7 @@ const config = {
         groupUpdate: true,
         callAutoReject: process.env.CALL_AUTO_REJECT === 'true',
         autoReaction: process.env.AUTO_REACTION === 'true',
+        botStatusAlerts: process.env.BOT_STATUS_ALERTS !== 'false',
     },
 
     antiSpam: {
