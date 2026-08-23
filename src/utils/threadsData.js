@@ -1,12 +1,20 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { loadBlob, saveBlob, isDatabaseConnected } from './persistentStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const DATA_FILE = path.join(path.dirname(path.dirname(path.dirname(__filename))), 'data', 'threads.json');
+const STORE_KEY = 'store:threads';
 
 let _data = null;
 let _dirty = false;
+let _hydrationPromise = null;
+
+function ensureHydrated() {
+    if (!_hydrationPromise) _hydrationPromise = hydrateFromMongo();
+    return _hydrationPromise;
+}
 
 function load() {
     if (_data) return _data;
@@ -20,6 +28,20 @@ function load() {
     return _data;
 }
 
+async function hydrateFromMongo() {
+    if (!isDatabaseConnected()) return;
+    try {
+        const remote = await loadBlob(STORE_KEY);
+        if (remote && typeof remote === 'object') {
+            _data = { ..._data, ...remote };
+            _dirty = true;
+            console.log(`[threadsData] Hydrated ${Object.keys(remote).length} thread(s) from MongoDB`);
+        }
+    } catch (err) {
+        console.error('[threadsData] MongoDB hydration failed:', err.message);
+    }
+}
+
 function save() {
     if (!_dirty || !_data) return;
     try {
@@ -29,6 +51,7 @@ function save() {
     } catch (err) {
         console.error('[threadsData] Failed to write data file:', err.message);
     }
+    saveBlob(STORE_KEY, _data).catch(() => {});
 }
 
 setInterval(save, 3000);
@@ -76,6 +99,7 @@ const threadsData = {
         const id = cleanId(threadID);
         if (!id) return null;
         const data = load();
+        await ensureHydrated();
         if (!data[id]) {
             data[id] = {
                 ...defaultThread(id),
@@ -93,18 +117,22 @@ const threadsData = {
         const id = cleanId(threadID);
         if (!id) return null;
         const data = load();
+        await ensureHydrated();
         if (!data[id]) { data[id] = defaultThread(id); _dirty = true; }
         return data[id];
     },
 
     async getAll() {
-        return Object.values(load());
+        const data = load();
+        await ensureHydrated();
+        return Object.values(data);
     },
 
     async set(threadID, updateData, dotPath = null) {
         const id = cleanId(threadID);
         if (!id) return null;
         const data = load();
+        await ensureHydrated();
         if (!data[id]) data[id] = defaultThread(id);
         if (dotPath) {
             pathSet(data[id], dotPath, updateData);
