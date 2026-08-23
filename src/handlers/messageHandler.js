@@ -18,6 +18,7 @@ import { isAntiGmEnabled } from '../commands/admin/antigm.js';
 import { getAutoStatusConfig } from '../commands/admin/autostatus.js';
 import { getAutomationConfig } from '../utils/automationStore.js';
 import { getStickerActionByHash, getStickerHashFromMessage, collectSticker } from '../utils/stickerVault.js';
+import usersData from '../utils/usersData.js';
 import { getStickerCmdByFingerprint } from '../services/databaseService.js';
 import { getStickerFingerprint } from '../commands/owner/setcmd.js';
 import { getAmazingBot } from '../utils/amazingbot.js';
@@ -525,7 +526,15 @@ class MessageHandler {
                 senderPhone = resolvePrivateSenderPhone(sock, fromMe, from, rawParticipant);
             }
 
-            const senderJid = senderPhone ? senderPhone + '@s.whatsapp.net' : (rawParticipant || from);
+            const senderJid = senderPhone ? senderPhone + '@s.whatsapp.net' : (isGroup ? rawParticipant : (rawParticipant || from));
+
+            if (senderJid && !senderJid.endsWith('@g.us') && message.pushName) {
+                usersData.get(senderJid).then(u => {
+                    if (u && u.name !== message.pushName) {
+                        usersData.set(senderJid, { name: message.pushName }).catch(() => {});
+                    }
+                }).catch(() => {});
+            }
 
             const isOwnerUser = await isOwner(senderPhone, message, sock);
             const isSudoUser = await isSudo(senderPhone, message, sock);
