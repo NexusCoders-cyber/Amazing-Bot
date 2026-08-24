@@ -165,10 +165,14 @@ class CommandHandler {
         return '';
     }
 
-    resolvePrivatePhone(sock, fromMe, remoteJid, userJid) {
+    resolvePrivatePhone(sock, fromMe, remoteJid, userJid, remoteJidAlt) {
         if (fromMe) return getBotPhone(sock);
         for (const j of [userJid, remoteJid]) {
             if (j && !isLid(j)) { const n = rawNum(j); if (n && n.length >= 7) return n; }
+        }
+        if (remoteJidAlt) {
+            const n = rawNum(remoteJidAlt);
+            if (n && n.length >= 7) return n;
         }
         return '';
     }
@@ -267,7 +271,7 @@ class CommandHandler {
                 : await this.resolvePhone(sock, from, rawParticipant);
         } else {
             rawParticipant = fromMe ? (sock?.user?.id || '') : from;
-            senderPhone = this.resolvePrivatePhone(sock, fromMe, from, rawParticipant);
+            senderPhone = this.resolvePrivatePhone(sock, fromMe, from, rawParticipant, message.key.remoteJidAlt);
         }
         const senderJid = senderPhone ? `${senderPhone}@s.whatsapp.net` : (rawParticipant || from);
         return { from, fromMe, isGroup, rawParticipant, senderPhone, senderJid };
