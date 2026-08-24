@@ -127,6 +127,7 @@ function collectPhoneCandidatesFromMessage(message = {}) {
 
     const jidValues = [
         key?.remoteJid,
+        key?.remoteJidAlt,
         key?.participant,
         key?.participantAlt,
         key?.participantPn,
@@ -198,7 +199,7 @@ async function resolveSenderPhone(sock, groupJid, rawParticipant) {
     return '';
 }
 
-function resolvePrivateSenderPhone(sock, fromMe, remoteJid, userJid) {
+function resolvePrivateSenderPhone(sock, fromMe, remoteJid, userJid, remoteJidAlt) {
     if (fromMe) {
         return getBotPhone(sock);
     }
@@ -208,6 +209,10 @@ function resolvePrivateSenderPhone(sock, fromMe, remoteJid, userJid) {
     }
     if (remoteJid && !isLid(remoteJid)) {
         const n = stripJid(remoteJid);
+        if (n && n.length >= 7) return n;
+    }
+    if (remoteJidAlt) {
+        const n = stripJid(remoteJidAlt);
         if (n && n.length >= 7) return n;
     }
     return '';
@@ -523,7 +528,7 @@ class MessageHandler {
                 senderPhone = await resolveSenderPhone(sock, from, rawParticipant);
             } else {
                 rawParticipant = fromMe ? (sock.user?.id || '') : from;
-                senderPhone = resolvePrivateSenderPhone(sock, fromMe, from, rawParticipant);
+                senderPhone = resolvePrivateSenderPhone(sock, fromMe, from, rawParticipant, message.key.remoteJidAlt);
             }
 
             const senderJid = senderPhone ? senderPhone + '@s.whatsapp.net' : (isGroup ? rawParticipant : (rawParticipant || from));
